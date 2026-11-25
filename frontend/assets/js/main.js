@@ -102,6 +102,20 @@
                     }
                 });
 
+                const newFab = doc.querySelector('.fab-container');
+                const currentFab = document.querySelector('.fab-container');
+                if (newFab && !currentFab) {
+                    const fabEl = document.createElement('div');
+                    fabEl.className = 'fab-container';
+                    fabEl.innerHTML = newFab.innerHTML;
+                    document.body.appendChild(fabEl);
+                } else if (newFab && currentFab) {
+                    currentFab.innerHTML = newFab.innerHTML;
+                    currentFab.hidden = false;
+                } else if (!newFab && currentFab) {
+                    currentFab.remove();
+                }
+
                 document.querySelectorAll('.modal-backdrop-overlay.active').forEach(modal => modal.classList.remove('active'));
                 byId('remindersPopup')?.classList.remove('open');
                 const copilotDropdown = byId('aiCopilotDropdown');

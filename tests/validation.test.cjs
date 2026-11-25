@@ -27,6 +27,16 @@ test('validates strict leap-year dates without banning past tasks', () => {
   assert.equal(validation.ageFromDOB('2099-01-01', '2026-11-24'), null);
 });
 
+test('increments age on the birthday and uses the existing leap-day boundary', () => {
+  assert.equal(validation.ageFromDOB('2000-11-24', '2026-11-23'), 25);
+  assert.equal(validation.ageFromDOB('2000-11-24', '2026-11-24'), 26);
+  assert.equal(validation.ageFromDOB('2000-11-24', '2026-11-25'), 26);
+  assert.equal(validation.ageFromDOB('2000-02-29', '2024-02-28'), 23);
+  assert.equal(validation.ageFromDOB('2000-02-29', '2024-02-29'), 24);
+  assert.equal(validation.ageFromDOB('2000-02-29', '2026-02-28'), 25);
+  assert.equal(validation.ageFromDOB('2000-02-29', '2026-03-01'), 26);
+});
+
 test('normalizes Philippine phone forms and rejects letters, controls and unbounded raw input', () => {
   for (const phone of ['+639171234567', '639171234567', '09171234567', '9171234567', '+63 (917) 123-4567', '0917.123.4567']) assert.equal(validation.normalizePhone(phone), '+639171234567');
   for (const phone of ['abc09171234567', '0917123456', '+64171234567', '+639171234567\n', 'x'.repeat(41), ' '.repeat(40) + '09171234567', 9171234567]) assert.equal(validation.check('login', { phone, password: 'x' }).valid, false, String(phone));
@@ -69,7 +79,7 @@ test('validates task boundaries, required time, optional IDs and multiline descr
 });
 
 test('normalizes grocery names, allows quantities and literal markup, and checks duplicate context', () => {
-  assert.deepEqual(validation.assert('grocery', { name: '  2\ttrays   of\n eggs  ' }), { groceryName: '2 trays of eggs' });
+  assert.deepEqual(validation.assert('grocery', { name: '  2\ttrays   of\n eggs  ' }), { groceryName: '2 trays of eggs', quantity: 1 });
   assert.equal(validation.assert('grocery', { groceryName: '1/2 kg 苹果 – fresh' }).groceryName, '1/2 kg 苹果 – fresh');
   assert.equal(validation.assert('grocery', { groceryName: '<script>literal label</script>' }).groceryName, '<script>literal label</script>');
   assert.equal(validation.check('grocery', { groceryName: 'x'.repeat(100) }).valid, true);
@@ -78,6 +88,38 @@ test('normalizes grocery names, allows quantities and literal markup, and checks
   assert.equal(validation.check('grocery', { groceryName: 'Cafe\u0301 milk' }, context).valid, false);
   assert.equal(validation.check('grocery', { groceryName: 'CAFÉ MILK' }, { ...context, excludeId: 'one' }).valid, true);
   assert.equal(validation.check('grocery', { groceryName: 'Milk' }, { groceries: ['milk'] }).valid, false);
+});
+
+test('defaults omitted grocery quantities and normalizes whole numbers within the supported range', () => {
+  assert.equal(validation.LIMITS.groceryQuantity, 9999);
+  assert.deepEqual(validation.assert('grocery', { name: 'Milk' }), { groceryName: 'Milk', quantity: 1 });
+  assert.deepEqual(validation.assert('grocery', { groceryName: 'Milk', quantity: undefined }), { groceryName: 'Milk', quantity: 1 });
+  for (const [quantity, expected] of [[1, 1], [9999, 9999], ['1', 1], ['23', 23], ['9999', 9999], [' 2 ', 2]]) {
+    const values = validation.assert('grocery', { name: ' Milk ', quantity, purchasedAt: 'forged', id: 'forged' });
+    assert.deepEqual(values, { groceryName: 'Milk', quantity: expected });
+    assert.equal(Number.isInteger(values.quantity), true);
+  }
+});
+
+test('rejects explicit invalid grocery quantities with a quantity field error', () => {
+  const rejected = ['', '   ', 0, '0', -1, '-1', 1.5, '1.5', '1.0', '1e2', '1E2', 'two', '2 eggs', true, false, null, {}, [], [2], Infinity, NaN, 10000, '10000'];
+  for (const quantity of rejected) {
+    const result = validation.check('grocery', { name: 'Milk', quantity });
+    assert.equal(result.valid, false, String(quantity));
+    assert.deepEqual(Object.keys(result.errors), ['quantity'], String(quantity));
+    assert.throws(() => validation.assert('grocery', { name: 'Milk', quantity }), error => error instanceof validation.ValidationError && error.code === 'VALIDATION_ERROR' && typeof error.fields.quantity === 'string');
+  }
+  const result = validation.check('grocery', { name: ' ', quantity: 0 });
+  assert.equal(typeof result.errors.groceryName, 'string');
+  assert.equal(typeof result.errors.quantity, 'string');
+});
+
+test('keeps duplicate grocery names invalid when quantities differ', () => {
+  const context = { groceries: [{ id: 'one', name: 'Milk', quantity: 2 }] };
+  const duplicate = validation.check('grocery', { name: ' milk ', quantity: 3 }, context);
+  assert.equal(duplicate.valid, false);
+  assert.equal(typeof duplicate.errors.groceryName, 'string');
+  assert.deepEqual(validation.assert('grocery', { name: ' milk ', quantity: 3 }, { ...context, excludeId: 'one' }), { groceryName: 'milk', quantity: 3 });
 });
 
 test('validates report category, nonblank description, bounded email and filename metadata', () => {
@@ -109,18 +151,29 @@ test('rejects raw filename controls before trimming both report and file metadat
   assert.equal(validation.assert('report', { category: 'Other', description: 'A useful report.', screenshotName: ' image.png ' }).screenshotName, 'image.png');
 });
 
-test('allows optional personal information, manual ages, system theme and the documented report categories', () => {
+test('allows optional personal information, system theme and the documented report categories', () => {
   const minimal = { name: 'Alex', phone: '+639171234567', role: 'Mom', password: 'FamilyPlan123', confirmPassword: 'FamilyPlan123' };
   const values = validation.assert('signup', minimal);
   assert.equal(values.dob, ''); assert.equal(values.civilStatus, ''); assert.equal(values.age, null); assert.equal(values.photo, '');
-  assert.equal(validation.assert('profile', { ...parent, age: '' }).age, null);
-  assert.equal(validation.assert('profile', { ...parent, dob: '', civilStatus: '', age: '27' }).age, 27);
-  for (const age of [0, 150]) assert.equal(validation.assert('profile', { ...parent, age }).age, age);
-  for (const age of [-1, 151, 1.5, '20 years', true]) assert.equal(validation.check('profile', { ...parent, age }).valid, false);
   assert.deepEqual(validation.assert('settings', { theme: 'system' }), { theme: 'system' });
   assert.deepEqual(validation.REPORT_CATEGORIES, ['Bug / Crash', 'Feature Request', 'UI Issue', 'Account Issue', 'Other']);
   for (const category of validation.REPORT_CATEGORIES) assert.equal(validation.check('report', { category, description: 'x' }).valid, true);
   assert.equal(validation.check('report', { category: 'Tasks & reminders', description: 'A valid description.' }).valid, false);
+});
+
+test('derives profile and signup age exclusively from DOB and ignores submitted age', () => {
+  const context = { today: '2026-11-24' };
+  for (const age of [undefined, null, '', 0, 150, -1, 151, 1.5, '27', '20 years', true, {}, []]) {
+    assert.equal(validation.assert('profile', { ...parent, age }, context).age, 26);
+    assert.equal(validation.assert('signup', { ...signup, age }, context).age, 26);
+    for (const dob of [undefined, null, '']) assert.equal(validation.assert('profile', { ...parent, dob, age }, context).age, null);
+  }
+  for (const dob of ['2001-02-30', '2026-11-25']) {
+    const result = validation.check('profile', { ...parent, dob, age: 26 }, context);
+    assert.equal(result.valid, false);
+    assert.equal(typeof result.errors.dob, 'string');
+    assert.equal(result.values.age, null);
+  }
 });
 
 test('validates profile photo data URLs, decoded size, allowed MIME and matching signatures', () => {

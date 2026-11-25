@@ -28,7 +28,7 @@ function enqueue(filePath, work) {
   operation.then(cleanup, cleanup);
   return operation;
 }
-function publicProfile(account) { return { id: account.id, ...account.profile }; }
+function publicProfile(account) { return { id: account.id, ...account.profile, age: validation.ageFromDOB(account.profile.dob, shanghaiDay()) }; }
 function shanghaiDay() {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
   const part = type => parts.find(item => item.type === type).value;
@@ -77,6 +77,15 @@ function requireId(id) {
 }
 
 function createAccountStore(options = {}) {
+  const useCloud = Boolean(options.databaseUrl || (!options.filePath && process.env.DATABASE_URL));
+  if (useCloud) {
+    const { createPostgresAccountStore } = require('./pg-store.cjs');
+    return createPostgresAccountStore({
+      ...options,
+      ApiError,
+      shared: { profileValues, legacyProfileValues, accountValues, collision, unauthorized, missingAccount, requireId }
+    });
+  }
   const requestedPath = options.filePath || path.join(__dirname, 'data', 'accounts.json');
   if (typeof requestedPath !== 'string' || !requestedPath.trim()) throw new TypeError('An account database file path is required.');
   const filePath = path.resolve(requestedPath);
@@ -99,7 +108,12 @@ function createAccountStore(options = {}) {
       if (createOnly) {
         // An exclusive hard link publishes the complete initial file without
         // replacing a database another process may have created meanwhile.
-        await fs.link(temporaryPath, filePath);
+        try {
+          await fs.link(temporaryPath, filePath);
+        } catch (linkError) {
+          if (linkError.code === 'EEXIST') return false;
+          await fs.writeFile(filePath, JSON.stringify(database, null, 2) + '\n', { flag: 'wx', mode: 0o600, flush: true });
+        }
       } else {
         await fs.rename(temporaryPath, filePath);
       }

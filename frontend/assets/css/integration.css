@@ -1,0 +1,39 @@
+/* Form feedback and account controls, using the new interface's colors and shapes. */
+.phone-input-pill .phone-prefix {
+    position: absolute;
+    left: 46px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-weight: 600;
+    pointer-events: none;
+}
+.phone-input-pill .input-pill { padding-left: 92px; }
+.form-help { font-size: .775rem; color: var(--text-secondary); margin: 6px 16px 14px; }
+.field-error { color: var(--danger); font-size: .775rem; line-height: 1.5; margin: 6px 16px 0; }
+.form-error { color: var(--danger); background: var(--danger-soft); border-radius: var(--radius-md); padding: 10px 14px; font-size: .85rem; margin: 12px 0; }
+[hidden] { display: none !important; }
+.has-error .input-pill-wrapper { border-color: var(--danger); }
+.input-pill-wrapper input[type="password"], .input-pill-wrapper input[name="password"], .input-pill-wrapper input[name="confirmPassword"] { padding-right: 54px; }
+form[aria-busy="true"] .custom-select-wrapper { pointer-events: none; }
+form [type="submit"]:disabled, #confirmProfilePhotoBtn:disabled { opacity: .65; cursor: wait; }
+.input-pill[readonly]:not([role="combobox"]) { background: var(--bg-card-subtle); color: var(--text-secondary); }
+.password-strength { display: flex; align-items: center; gap: 9px; font-size: .775rem; color: var(--text-secondary); margin: 0 16px 18px; }
+.password-strength-bar { width: 55px; height: 5px; flex-shrink: 0; background: var(--border-color); border-radius: var(--radius-pill); }
+.password-strength[data-strength="weak"] .password-strength-bar { background: var(--danger); }
+.password-strength[data-strength="good"] .password-strength-bar { background: var(--warning); }
+.password-strength[data-strength="strong"] .password-strength-bar { background: var(--primary-green); }
+.profile-theme-select { min-width: 95px; max-width: 120px; padding: 8px 10px; color: var(--text-primary); background: var(--bg-card-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+.profile-photo-change-btn { color: var(--primary-purple); font-size: .8rem; font-weight: 600; padding: 6px 12px; margin-bottom: 7px; }
+.profile-photo-preview { display: block; width: 180px; height: 180px; border-radius: 50%; object-fit: cover; margin: 18px auto; background: var(--bg-card-subtle); }
+.profile-dialog-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 22px; }
+.profile-dialog-actions button { padding: 10px 22px; }
+.profile-storage-info { margin-top: 15px; color: var(--text-secondary); }
+.profile-photo-dialog { max-width: 440px; }
+.profile-theme-select:focus-visible, .profile-photo-change-btn:focus-visible, .custom-select-option:focus-visible, [data-profile-notifications]:focus-visible, [data-profile-privacy]:focus-visible { outline: 2px solid var(--primary-purple); outline-offset: 3px; }
+@media (max-width: 480px) {
+    .profile-theme-select { min-width: 80px; max-width: 95px; }
+    #profileThemeCard { gap: 10px; }
+    .password-strength { align-items: flex-start; }
+    .password-strength-bar { margin-top: 6px; }
+}

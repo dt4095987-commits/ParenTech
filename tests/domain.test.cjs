@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const domainPath = path.resolve(__dirname, '../frontend/domain.js');
+const domainPath = path.resolve(__dirname, '../frontend/assets/js/domain.js');
 
 function fresh(initial, disabled = false) {
   const values = new Map(initial ? [['parentech.v1', initial]] : []);
@@ -47,27 +47,32 @@ test('validates registration and stores salted hashes without plaintext password
 test('isolates accounts, demo data, and persisted sessions', async () => {
   const { store, values } = fresh();
   const first = await store.signup(profile);
-  store.addGrocery('Account A apples');
+  store.addGrocery('Account A apples', 7);
   store.logout();
   const second = await store.signup({ ...profile, name: 'Another Parent', phone: '0918 123 4567' });
   assert.notEqual(first.user.id, second.user.id);
   assert.equal(second.groceries.length, 0);
-  store.addGrocery('Account B bananas');
+  store.addGrocery('Account B bananas', 2);
   assert.throws(() => store.updateProfile({ phone: profile.phone }), /another account/);
   store.demo();
   assert.equal(store.getState().user.name, 'Alex Morgan');
   assert.equal(store.getState().groceries.length, 3);
   assert.equal(store.getState().tasks.length, 3);
-  store.addGrocery('Demo carrots');
+  store.addGrocery('Demo carrots', 4);
   store.logout();
   await store.login({ phone: profile.phone, password: profile.password });
   assert.deepEqual(store.getState().groceries.map(item => item.name), ['Account A apples']);
+  assert.equal(store.getState().groceries[0].quantity, 7);
   const persisted = values.get('parentech.v1');
   const restored = fresh(persisted).store;
   assert.equal(restored.getState().user.id, first.user.id);
   assert.equal(restored.getState().groceries[0].name, 'Account A apples');
+  assert.equal(restored.getState().groceries[0].quantity, 7);
   restored.demo();
   assert.equal(restored.getState().groceries.length, 4);
+  assert.deepEqual(restored.getState().groceries.map(item => item.quantity), [1, 1, 1, 4]);
+  await restored.login({ phone: '0918 123 4567', password: profile.password });
+  assert.deepEqual(restored.getState().groceries.map(item => [item.name, item.quantity]), [['Account B bananas', 2]]);
 });
 
 test('handles task editing, completion, notifications and deletion', () => {
@@ -103,22 +108,99 @@ test('handles task editing, completion, notifications and deletion', () => {
 test('tracks grocery purchases, recommends restored items, and prevents duplicates', () => {
   const { store } = fresh();
   store.demo();
-  store.addGrocery('  Apples  ');
+  store.addGrocery('  Apples  ', '12');
   const item = store.getState().groceries.at(-1);
   assert.equal(item.name, 'Apples');
+  assert.equal(item.quantity, 12);
   assert.throws(() => store.addGrocery('apples'), /already on/);
   store.editGrocery(item.id, 'Green apples');
+  assert.equal(store.getState().groceries.at(-1).quantity, 12);
+  store.editGrocery(item.id, 'Green apples', '5');
   store.purchaseGrocery(item.id);
   assert.equal(store.getState().groceries.length, 3);
   const purchase = store.getState().purchases[0];
   assert.equal(purchase.name, 'Green apples');
+  assert.equal(purchase.quantity, 5);
   assert.ok(!Number.isNaN(Date.parse(purchase.purchasedAt)));
   store.restorePurchase(purchase.id);
   assert.equal(store.getState().groceries.at(-1).name, 'Green apples');
+  assert.equal(store.getState().groceries.at(-1).quantity, 5);
+  assert.notEqual(store.getState().groceries.at(-1).id, item.id);
   assert.equal(store.getState().purchases.length, 1);
   store.deleteGrocery(store.getState().groceries.at(-1).id);
   assert.equal(store.getState().groceries.length, 3);
   assert.throws(() => store.addGrocery('   '), /enter/);
+});
+
+test('persists grocery quantities through edits, purchases, and re-adding history', () => {
+  let current = fresh();
+  current.store.demo();
+  current.store.addGrocery('Rice', 9999);
+  const groceryId = current.store.getState().groceries.at(-1).id;
+  current = fresh(current.values.get('parentech.v1'));
+  assert.equal(current.store.getState().groceries.at(-1).quantity, 9999);
+  current.store.editGrocery(groceryId, 'Brown rice', '3');
+  current = fresh(current.values.get('parentech.v1'));
+  assert.deepEqual(current.store.getState().groceries.at(-1), { id: groceryId, name: 'Brown rice', quantity: 3 });
+  current.store.purchaseGrocery(groceryId);
+  current = fresh(current.values.get('parentech.v1'));
+  const purchase = current.store.getState().purchases[0];
+  assert.equal(purchase.quantity, 3);
+  assert.equal(current.store.getState().groceries.some(item => item.id === groceryId), false);
+  current.store.restorePurchase(purchase.id);
+  current = fresh(current.values.get('parentech.v1'));
+  assert.equal(current.store.getState().groceries.at(-1).quantity, 3);
+  assert.deepEqual(current.store.getState().purchases[0], purchase);
+  current.store.addGrocery('Salt');
+  assert.equal(current.store.getState().groceries.at(-1).quantity, 1);
+});
+
+test('rejects invalid quantities atomically when creating or editing a grocery', () => {
+  const { store, values } = fresh();
+  store.demo();
+  store.addGrocery('Apples', 8);
+  const item = store.getState().groceries.at(-1);
+  for (const quantity of ['', ' ', 0, '0', -1, '-2', 1.5, '1.5', '1e2', 'abc', 10000, '10000', null, true, {}, [], Infinity, NaN]) {
+    const before = store.getState(), saved = values.get('parentech.v1');
+    assert.throws(() => store.addGrocery('Carrots', quantity), hasField('quantity'));
+    assert.throws(() => store.editGrocery(item.id, 'Green apples', quantity), hasField('quantity'));
+    assert.deepEqual(store.getState(), before);
+    assert.equal(values.get('parentech.v1'), saved);
+  }
+  const before = store.getState(), saved = values.get('parentech.v1');
+  assert.throws(() => store.editGrocery(item.id, ' ', 2), hasField('groceryName'));
+  assert.throws(() => store.editGrocery(item.id, 'Milk', 2), hasField('groceryName'));
+  assert.deepEqual(store.getState(), before);
+  assert.equal(values.get('parentech.v1'), saved);
+  store.editGrocery(item.id, 'Green apples', undefined);
+  assert.equal(store.getState().groceries.at(-1).quantity, 8);
+});
+
+test('loads legacy and malformed grocery quantities as one without losing records', () => {
+  const initial = fresh();
+  initial.store.demo();
+  const database = JSON.parse(initial.values.get('parentech.v1'));
+  const storedQuantities = [undefined, 9999, '3', null, '', 0, -2, 1.5, '1e2', 'invalid', 10000, {}, []];
+  const expected = [1, 9999, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+  const data = database.accounts['parentech-demo'].data;
+  data.groceries = storedQuantities.map((quantity, index) => ({ id: `grocery-${index}`, name: `Food ${index}`, quantity }));
+  data.purchases = storedQuantities.map((quantity, index) => ({ id: `purchase-${index}`, name: `Purchased food ${index}`, quantity, purchasedAt: '2026-11-24T01:00:00Z' }));
+  const restored = fresh(JSON.stringify(database));
+  assert.deepEqual(restored.store.getState().groceries.map(item => item.quantity), expected);
+  assert.deepEqual(restored.store.getState().purchases.map(item => item.quantity), expected);
+  assert.deepEqual(restored.store.getState().groceries.map(item => item.id), data.groceries.map(item => item.id));
+  assert.deepEqual(restored.store.getState().purchases.map(item => item.id), data.purchases.map(item => item.id));
+  restored.store.restorePurchase('purchase-0');
+  assert.equal(restored.store.getState().groceries.at(-1).quantity, 1);
+  const migrated = JSON.parse(restored.values.get('parentech.v1')).accounts['parentech-demo'].data;
+  assert.deepEqual(migrated.purchases.map(item => item.quantity), expected);
+  migrated.groceries[0].quantity = 6;
+  migrated.purchases[0].quantity = 4;
+  database.accounts['parentech-demo'].data = migrated;
+  restored.values.set('parentech.v1', JSON.stringify(database));
+  const refreshed = restored.store.reloadFromStorage();
+  assert.equal(refreshed.groceries[0].quantity, 6);
+  assert.equal(refreshed.purchases[0].quantity, 4);
 });
 
 test('validates settings and profile changes while problem reports are confirmation-only', () => {
@@ -324,7 +406,7 @@ test('reloads external browser changes and rejects IDs unsafe for HTML attribute
   assert.equal(memoryOnly.reloadFromStorage().groceries.length, 4);
 });
 
-test('optional profile information, editable ages, photos and system theme persist per account', async () => {
+test('optional profile information, derived ages, photos and system theme persist per account', async () => {
   const { store, values } = fresh();
   const state = await store.signup({ name: 'Alex', phone: '0917 123 4567', role: 'Mom', password: profile.password, confirmPassword: profile.password });
   assert.equal(state.user.dob, ''); assert.equal(state.user.civilStatus, ''); assert.equal(state.user.age, null);
@@ -332,12 +414,44 @@ test('optional profile information, editable ages, photos and system theme persi
   const photo = 'data:image/png;base64,' + Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).toString('base64');
   store.updateProfilePhoto(photo); store.updateSettings({ theme: 'system' });
   const restored = fresh(values.get('parentech.v1')).store;
-  assert.equal(restored.getState().user.age, 27); assert.equal(restored.getState().user.photo, photo); assert.equal(restored.getState().settings.theme, 'system');
+  assert.equal(restored.getState().user.age, null); assert.equal(restored.getState().user.photo, photo); assert.equal(restored.getState().settings.theme, 'system');
   const before = restored.getState();
   assert.throws(() => restored.updateProfilePhoto('data:image/svg+xml;base64,PHN2Zy8+'), hasField('photo'));
   assert.deepEqual(restored.getState(), before);
   restored.updateProfile({ age: '', dob: '', civilStatus: '' });
   assert.equal(restored.getState().user.age, null);
+});
+
+test('refreshes DOB age on birthdays and ignores saved ages without losing profiles or organizer records', t => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 10, 23, 23, 59) });
+  const { store, values } = fresh();
+  store.demo();
+  const photo = 'data:image/png;base64,iVBORw0KGgo=';
+  store.updateProfile({ name: 'Birthday Parent', dob: '2000-11-24', age: 99, photo });
+  store.addGrocery('Rice', 8);
+  store.purchaseGrocery(store.getState().groceries.at(-1).id);
+  const before = store.getState(), saved = values.get('parentech.v1');
+  assert.equal(before.user.age, 25);
+  t.mock.timers.setTime(new Date(2026, 10, 24).getTime());
+  const birthday = store.getState();
+  assert.equal(birthday.user.age, 26);
+  assert.equal(values.get('parentech.v1'), saved, 'Reading a birthday age does not rewrite storage');
+  assert.deepEqual({ ...birthday, user: { ...birthday.user, age: 25 } }, before);
+  const database = JSON.parse(saved);
+  database.accounts['parentech-demo'].profile.age = 'stale manual age';
+  const restored = fresh(JSON.stringify(database));
+  assert.equal(restored.store.getState().user.age, 26);
+  assert.equal(restored.store.getState().user.name, 'Birthday Parent');
+  assert.equal(restored.store.getState().user.photo, photo);
+  assert.deepEqual(restored.store.getState().purchases, before.purchases);
+  assert.equal(restored.store.updateProfile({ age: 5 }).user.age, 26);
+  assert.equal(restored.store.updateProfile({ dob: '2001-11-24' }).user.age, 25);
+  assert.equal(restored.store.getState().user.photo, photo);
+  database.accounts['parentech-demo'].profile.dob = '';
+  const missingDOB = fresh(JSON.stringify(database));
+  assert.equal(missingDOB.store.getState().user.age, null);
+  assert.equal(missingDOB.store.getState().user.photo, photo);
+  assert.deepEqual(missingDOB.store.getState().purchases, before.purchases);
 });
 
 test('profile streak counts view dates and grocery statistics count purchase days rather than items', async () => {

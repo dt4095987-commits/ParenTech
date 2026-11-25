@@ -1,0 +1,28 @@
+/* Data-driven controls keep the new frontend's existing component styles. */
+.backend-loading .auth-page-wrapper form { pointer-events: none; opacity: .65; }
+.task-description { font-size: .8rem; color: var(--text-secondary); margin-top: 3px; overflow-wrap: anywhere; }
+.task-meta { display: block; font-size: .75rem; color: var(--text-muted); margin-top: 4px; overflow-wrap: anywhere; }
+.grocery-item-name { min-width: 0; overflow-wrap: anywhere; }
+.grocery-item-card > .custom-checkbox-sq { flex-shrink: 0; padding: 0; }
+.grocery-item-card .item-action-btns { flex-shrink: 0; }
+.purchased-item-row { width: 100%; text-align: left; margin-bottom: 8px; }
+.recommended-item-pill { padding: 9px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-pill); background: var(--primary-purple-soft); color: var(--primary-purple); }
+.calendar-month-card { border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; background: var(--bg-card); }
+.calendar-month-card > h3 { margin-bottom: 12px; color: var(--text-primary); }
+.calendar-event-group + .calendar-event-group { margin-top: 18px; }
+.calendar-event-group > h3 { margin-bottom: 10px; font-size: .9rem; color: var(--primary-purple); }
+.cal-day-cell { font: inherit; margin: 0 auto; padding: 0; }
+[data-action][role='link'], [data-action][role='button'] { cursor: pointer; }
+[data-action][role='link']:focus-visible, [data-action][role='button']:focus-visible { outline: 2px solid var(--primary-purple); outline-offset: 3px; }
+input[aria-invalid='true'], textarea[aria-invalid='true'], select[aria-invalid='true'] { outline: 2px solid var(--danger); outline-offset: 2px; }
+.reminders-body .grocery-item-card { padding: 12px; gap: 10px; margin-bottom: 8px; }
+.reminders-body .task-meta { font-size: .7rem; }
+.reminders-body .item-action-btns { gap: 4px; }
+@media (max-width: 480px) {
+    .grocery-add-bar { flex-wrap: wrap; gap: 10px; }
+    .grocery-add-bar > #groceryItemInput { flex-basis: 100%; }
+    .grocery-add-bar > #groceryQuantity { min-height: 42px; }
+    .grocery-item-card { align-items: flex-start; }
+    .grocery-item-card .item-action-btns { gap: 4px; }
+    .grocery-item-card .item-action-btns button { width: 28px; height: 28px; }
+}

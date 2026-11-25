@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
+const http = require('node:http');
 const { randomBytes, randomUUID, pbkdf2Sync } = require('node:crypto');
 
 const signup = { name: 'Integration Parent', phone: '0919 123 4567', dob: '1991-07-10', civilStatus: 'Single', role: 'Solo Parent', password: 'FamilyPlan123', confirmPassword: 'FamilyPlan123' };
@@ -21,6 +22,15 @@ async function close(server) {
   if (!server?.listening) return;
   server.closeAllConnections?.();
   await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+}
+async function rawGet(base, route) {
+  const address = new URL(base);
+  return new Promise((resolve, reject) => {
+    const request = http.get({ hostname: address.hostname, port: address.port, path: route }, response => {
+      response.resume(); response.on('end', () => resolve(response.statusCode));
+    });
+    request.on('error', reject);
+  });
 }
 async function fixture(t) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'parentech-api-'));
@@ -152,19 +162,69 @@ test('simultaneous HTTP signup for the same normalized phone produces one accoun
   assert.equal((await api.file()).accounts.length, 1);
 });
 
-test('frontend assets and the shared validator stay available through explicit public URLs', async t => {
+test('the new frontend, legacy frontend and shared modules stay available through explicit public URLs', async t => {
   const api = await fixture(t), client = api.client();
-  const urls = ['/index.html', '/app.js', '/domain.js', '/styles.css', '/layout.css', '/mobile-spacing.css', '/validation.css', '/validation.js', '/shared/validation.js'];
-  const assets = await fs.readdir(path.resolve(__dirname, '../frontend/assets'), { withFileTypes: true });
-  urls.push(...assets.filter(entry => entry.isFile()).map(entry => '/assets/' + encodeURIComponent(entry.name)));
+  const urls = ['/index.html', '/domain.js', '/validation.js', '/shared/validation.js'];
+  for (const [folder, prefix, extensions] of [
+    ['pages', '/pages/', /\.html$/i], ['assets/css', '/assets/css/', /\.css$/i],
+    ['assets/js', '/assets/js/', /\.js$/i], ['assets/img', '/assets/img/', /\.(png|jpe?g|webp|gif|avif|ico|svg)$/i],
+    ['assets/fonts', '/assets/fonts/', /\.(ttf|otf|woff2?)$/i]
+  ]) {
+    let entries;
+    try { entries = await fs.readdir(path.resolve(__dirname, '../frontend', folder), { withFileTypes: true }); }
+    catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    urls.push(...entries.filter(entry => entry.isFile() && !entry.name.startsWith('.') && extensions.test(entry.name)).map(entry => prefix + encodeURIComponent(entry.name)));
+  }
   for (const url of urls) assert.equal((await client.request('GET', url)).status, 200, url);
+  const index = await client.request('GET', '/');
+  assert.equal(index.text, await fs.readFile(path.resolve(__dirname, '../frontend/index.html'), 'utf8'));
+  assert.match(index.text, /assets\/css\/style\.css/);
+  const domain = await client.request('GET', '/domain.js');
+  assert.equal(domain.text, await fs.readFile(path.resolve(__dirname, '../frontend/assets/js/domain.js'), 'utf8'));
+  const image = await client.request('GET', '/assets/img/avatar.jpg');
+  assert.equal(image.headers.get('content-type'), 'image/jpeg');
+  const head = await client.request('HEAD', '/pages/home.html');
+  assert.equal(head.status, 200); assert.equal(head.text, ''); assert.match(head.headers.get('content-type'), /text\/html/);
   const validator = await client.request('GET', '/validation.js');
   assert.match(validator.text, /PTValidation/); assert.match(validator.headers.get('content-type'), /javascript/);
   assert.equal((await client.request('GET', '/shared/validation.js')).text, validator.text);
-  for (const url of ['/frontend/index.html', '/frontend/app.js', '/backend/data/accounts.json', '/backend/server.cjs', '/shared/private.json']) assert.equal((await client.request('GET', url)).status, 404, url);
+  const legacy = ['/legacy/index.html', '/legacy/app.js', '/legacy/domain.js', '/legacy/styles.css', '/legacy/layout.css', '/legacy/mobile-spacing.css', '/legacy/validation.css', '/legacy/validation.js'];
+  const assets = await fs.readdir(path.resolve(__dirname, '../archive/legacy-frontend/assets'), { withFileTypes: true });
+  legacy.push(...assets.filter(entry => entry.isFile()).map(entry => '/legacy/assets/' + encodeURIComponent(entry.name)));
+  for (const url of legacy) assert.equal((await client.request('GET', url)).status, 200, url);
+  const legacyIndex = await client.request('GET', '/legacy/index.html');
+  assert.equal(legacyIndex.text, await fs.readFile(path.resolve(__dirname, '../archive/legacy-frontend/index.html'), 'utf8'));
+  for (const root of ['/legacy', '/legacy/']) {
+    const redirect = await client.request('GET', root);
+    assert.equal(redirect.status, 302); assert.equal(redirect.headers.get('location'), '/legacy/index.html');
+  }
+  assert.equal((await client.request('POST', '/index.html', {})).status, 404);
+});
+
+test('public routing blocks traversal and private workspace files while CSP allows only the required stylesheet services', async t => {
+  const api = await fixture(t), client = api.client();
+  const snapshot = await api.snapshot();
+  for (const url of [
+    '/frontend/index.html', '/ParentechWeb/index.html', '/backend/data/accounts.json', '/backend/server.cjs',
+    '/data/accounts.json', '/shared/private.json', '/Password.pdf', '/.git/config', '/package.json',
+    '/README.md', '/assets/js/accounts.json', '/assets/css/secret.txt', '/assets/img/Password.pdf',
+    '/pages/../index.html', '/pages/%2e%2e/index.html', '/pages/%2e%2e%2findex.html',
+    '/assets/js/..%2f..%2f..%2fbackend/data/accounts.json', '/assets/js/%5c..%5cbackend%5cserver.cjs',
+    '/legacy/../backend/data/accounts.json', '/legacy/%2e%2e%2fbackend/data/accounts.json',
+    '/index.html%00', '/%252e%252e/backend/data/accounts.json'
+  ]) assert.equal(await rawGet(api.base, url), 404, url);
+  assert.equal(await rawGet(api.base, '/%zz'), 400);
+  const csp = (await client.request('GET', '/')).headers.get('content-security-policy');
+  assert.equal(csp.match(/(?:^|;\s*)script-src\s+([^;]+)/)[1], "'self'");
+  assert.match(csp, /style-src[^;]*https:\/\/fonts\.googleapis\.com\/css2/);
+  assert.match(csp, /style-src[^;]*https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/font-awesome\/6\.4\.0\/css\/all\.min\.css/);
+  assert.match(csp, /font-src[^;]*https:\/\/fonts\.gstatic\.com/);
+  assert.match(csp, /font-src[^;]*https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/font-awesome\/6\.4\.0\/webfonts\//);
+  assert.equal(await api.snapshot(), snapshot, 'Static route checks leave the isolated account store unchanged');
 });
 
 test('HTTP optional profile fields and validated image updates survive restart without changing credentials', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-11-24T04:00:00Z') });
   const api = await fixture(t), client = api.client();
   const minimal = { name: 'Alex', phone: '0919 123 4567', role: 'Dad', password: signup.password, confirmPassword: signup.password };
   const created = await client.request('POST', '/api/accounts/signup', minimal);
@@ -173,16 +233,20 @@ test('HTTP optional profile fields and validated image updates survive restart w
   const bytes = Buffer.alloc(2 * 1024 * 1024); Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(bytes);
   const photo = 'data:image/png;base64,' + bytes.toString('base64');
   const changed = await client.request('PATCH', '/api/accounts/profile', { photo, age: '27' });
-  assert.equal(changed.status, 200); assert.equal(changed.data.user.photo, photo); assert.equal(changed.data.user.age, 27); assertPublic(changed.data.user);
+  assert.equal(changed.status, 200); assert.equal(changed.data.user.photo, photo); assert.equal(changed.data.user.age, null); assertPublic(changed.data.user);
   const ageOnly = await client.request('PATCH', '/api/accounts/profile', { age: 28 });
-  assert.equal(ageOnly.status, 200); assert.equal(ageOnly.data.user.photo, photo); assert.equal(ageOnly.data.user.age, 28);
+  assert.equal(ageOnly.status, 200); assert.equal(ageOnly.data.user.photo, photo); assert.equal(ageOnly.data.user.age, null);
+  const birthDate = await client.request('PATCH', '/api/accounts/profile', { dob: '2000-11-24', age: 99 });
+  assert.equal(birthDate.status, 200); assert.equal(birthDate.data.user.age, 26); assert.equal(birthDate.data.user.photo, photo);
+  const derived = await client.request('PATCH', '/api/accounts/profile', { age: '' });
+  assert.equal(derived.status, 200); assert.equal(derived.data.user.age, 26); assert.equal(derived.data.user.dob, '2000-11-24');
   assert.deepEqual((await api.file()).accounts[0].credentials, credentials);
   const before = await api.snapshot();
   const invalid = await client.request('PATCH', '/api/accounts/profile', { photo: 'data:image/svg+xml;base64,PHN2Zy8+' });
   assert.equal(invalid.status, 422); assert.ok(invalid.data.fields.photo); assert.equal(await api.snapshot(), before);
   await close(api.server); await api.start();
   const restored = await api.client().request('POST', '/api/accounts/login', { phone: minimal.phone, password: minimal.password });
-  assert.equal(restored.status, 200); assert.equal(restored.data.user.photo, photo); assert.equal(restored.data.user.age, 28);
+  assert.equal(restored.status, 200); assert.equal(restored.data.user.photo, photo); assert.equal(restored.data.user.age, 26);
   const missing = await api.client().request('POST', '/api/accounts/login', { phone: '0918 123 4567', password: minimal.password });
   assert.equal(missing.status, 401); assert.equal(missing.data.code, 'PHONE_NOT_REGISTERED'); assert.ok(missing.data.fields.phone);
 });
@@ -202,6 +266,7 @@ test('profile PATCH is bound to the displayed account and cannot modify another 
   assert.equal(await api.snapshot(), before);
   const correct = await first.request('PATCH', '/api/accounts/profile', { age: 40 });
   assert.equal(correct.status, 200); assert.equal(correct.data.user.id, a.data.user.id);
+  assert.equal(correct.data.user.age, a.data.user.age); assert.equal(correct.data.user.dob, a.data.user.dob);
   const untouched = await second.request('GET', '/api/accounts/session');
   assert.equal(untouched.data.user.id, b.data.user.id); assert.equal(untouched.data.user.name, 'Another Parent');
 });

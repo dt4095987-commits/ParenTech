@@ -47,6 +47,7 @@
 .row-actions { flex-shrink: 0; }
 .filter-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
 .filter-tab { padding: 10px 16px; }
+.task-list-summary { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
 
 /* Fluid columns keep the calendar and profile aligned at laptop widths. */
 .calendar-layout {
@@ -77,16 +78,47 @@
 .grocery-form,
 .has-purchases .grocery-form { height: 73px; margin-bottom: 24px; }
 .has-purchases .grocery-form > .btn { width: 105px; height: 52px; min-height: 52px; }
+.grocery-quantity-field {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 88px;
+  gap: 2px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+.grocery-quantity-field > label { color: var(--purple); font-size: 12px; font-weight: 400; line-height: 16px; }
+.grocery-quantity-field > input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 4px;
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 28px;
+}
+.grocery-quantity-field > input:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
 .grocery-list { gap: 16px; }
 .grocery-list:empty { display: none; }
 .reference-grocery-panel:has(.grocery-list:empty) .grocery-form { margin-bottom: 0; }
 .has-purchases .grocery-list:not(:empty) { margin-top: 0; }
 .grocery-row { height: auto; min-height: 80px; padding: 16px 24px; gap: 24px; }
+.grocery-item-details { display: flex; flex-direction: column; align-items: flex-start; flex: 1; min-width: 0; gap: 4px; }
+.grocery-item-details .grocery-name { flex: none; width: 100%; }
+.grocery-quantity.badge { min-height: 24px; padding: 3px 10px; font-size: 12px; font-weight: 400; line-height: 18px; }
 .grocery-row .row-actions { gap: 12px; }
 .grocery-bottom-panels { gap: 24px; margin-top: 24px; align-items: stretch; }
 .purchased-panel,
 .recommended-panel { min-height: 0; padding: 24px; }
 .purchased-items { margin: 16px 0 0; gap: 12px; }
+.purchased-row > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.purchase-quantity { flex-shrink: 0; color: var(--purple); font-size: 14px; font-weight: 400; white-space: nowrap; }
+.purchased-row > .purchase-quantity { margin-left: auto; }
+.grocery-history-page .purchased-row { height: auto; min-height: 64px; }
+.recommendation { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; overflow-wrap: anywhere; text-align: left; }
 .recommendations { gap: 8px; }
 .recommended-panel > p { margin-top: 16px; }
 

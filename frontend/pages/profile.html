@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile & Settings - ParenTech</title>
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#7337B8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/integration.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+    <div class="app-shell">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        <aside class="app-sidebar" id="appSidebar">
+            <nav class="sidebar-nav-list">
+                <a href="home.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Home</span>
+                </a>
+                <a href="calendar.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>Calendar</span>
+                </a>
+                <a href="grocery.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span>Grocery</span>
+                </a>
+                <a href="tasks.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>Tasks</span>
+                </a>
+                <a href="pills.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-capsules"></i>
+                    <span>Pill Reminders</span>
+                </a>
+                <a href="profile.html" class="sidebar-nav-item active">
+                    <i class="fa-solid fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div style="height: 1px; background: var(--border-subtle); margin: 12px 16px;"></div>
+                <a href="faqs.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-circle-question"></i>
+                    <span>FAQs</span>
+                </a>
+                <a href="report-problem.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-flag"></i>
+                    <span>Report a Problem</span>
+                </a>
+                <a href="help.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-headset"></i>
+                    <span>Help & Support</span>
+                </a>
+            </nav>
+            <div class="sidebar-bottom">
+                <button type="button" class="btn-sidebar-logout" data-action="logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="app-main-content">
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <a href="home.html" class="topbar-logo">
+                        <img src="../assets/img/logo.png" alt="ParenTech Logo">
+                        <span class="topbar-brand">Paren<span class="brand-tech">Tech</span></span>
+                    </a>
+                </div>
+
+                <div class="topbar-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="topbarSearchInput" placeholder="Search profile & settings...">
+                </div>
+
+                <div class="topbar-right">
+                    <button type="button" class="icon-btn-round" data-action="toggle-theme" title="Toggle Dark/Light Mode">
+                        <i class="fa-solid fa-moon" data-theme-icon></i>
+                    </button>
+                    <button type="button" class="icon-btn-round" id="notifBtn" title="Reminders & Alarms">
+                        <i class="fa-solid fa-bell"></i>
+                        <span class="notif-badge"></span>
+                    </button>
+
+                    <div class="reminders-popup" id="remindersPopup">
+                        <div class="reminders-header">
+                            <div class="reminders-title"><i class="fa-solid fa-bell"></i> Reminders & Alarms</div>
+                            <button type="button" class="btn-modal-close" id="closeRemindersPopup" style="width:28px;height:28px;font-size:0.9rem;"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="reminders-body" id="remindersPopupBody">No upcoming tasks or reminders.</div>
+                    </div>
+
+                    <a href="profile.html" class="topbar-avatar" title="View Profile">
+                        <img src="../assets/img/logo.png" alt="Your profile" data-profile-photo>
+                    </a>
+                </div>
+            </header>
+
+            <!-- Page Body: Clean Centered Profile & Settings Hub -->
+            <main class="app-page-body">
+                <div class="profile-page-grid">
+                    <div class="profile-main-area">
+                        <!-- Hero Card with Avatar & Stats -->
+                        <div class="profile-hero-card">
+                            <div class="profile-avatar-circle-lg">
+                                <img src="../assets/img/logo.png" alt="Your profile" data-profile-photo>
+                            </div>
+                            <h1 class="profile-hero-name" style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">
+                                <span id="profileUserName"></span> <span style="color:var(--primary-purple);">♥</span>
+                            </h1>
+                            <div class="profile-hero-phone" id="profileUserPhone" style="font-size: 0.9rem; color: var(--text-muted);"></div>
+
+                            <button type="button" class="profile-photo-change-btn" id="chooseProfilePhotoBtn"><i class="fa-solid fa-camera"></i> Change photo</button>
+                            <input type="file" id="profilePhotoInput" accept="image/png,image/jpeg,image/webp" hidden>
+
+                            <!-- Edit Profile Button -->
+                            <button type="button" class="profile-edit-btn" id="editProfileBtn">
+                                <i class="fa-solid fa-pen"></i> Edit Profile
+                            </button>
+
+                            <!-- Role & Age Badges -->
+                            <div class="profile-badges-row">
+                                <span class="profile-badge" id="profileHeroRoleBadge"></span>
+                                <span class="profile-badge" id="profileHeroAgeBadge">Age: N/A</span>
+                            </div>
+
+                            <!-- Streak & Accomplishment Stats -->
+                            <div class="profile-stats-row">
+                                <div class="profile-stat-box">
+                                    <div class="profile-stat-val" id="profileTasksDoneVal">0</div>
+                                    <div class="profile-stat-lbl">Tasks Done</div>
+                                </div>
+                                <div class="profile-stat-box">
+                                    <div class="profile-stat-val" id="profileDayStreakVal">0</div>
+                                    <div class="profile-stat-lbl">Day Streak</div>
+                                </div>
+                                <div class="profile-stat-box">
+                                    <div class="profile-stat-val" id="profileGroceriesDoneVal">0</div>
+                                    <div class="profile-stat-lbl">Grocery Days</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings & Preferences Cards -->
+                        <div class="settings-option-card" id="profileThemeCard">
+                            <div class="settings-option-left">
+                                <div class="settings-icon-circle">
+                                    <i class="fa-solid fa-circle-half-stroke"></i>
+                                </div>
+                                <div>
+                                    <div class="settings-option-title">Theme Mode</div>
+                                    <div class="settings-option-desc" id="themeModeLabel"></div>
+                                </div>
+                            </div>
+                            <select id="profileThemeSelect" class="profile-theme-select" aria-label="Theme Mode">
+                                <option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-option-card" data-profile-notifications role="button" tabindex="0">
+                            <div class="settings-option-left">
+                                <div class="settings-icon-circle">
+                                    <i class="fa-regular fa-bell"></i>
+                                </div>
+                                <div>
+                                    <div class="settings-option-title">Notifications Settings</div>
+                                    <div class="settings-option-desc">Manage browser alerts and upcoming reminders</div>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right" style="color:var(--text-muted); font-size:0.9rem;"></i>
+                        </div>
+
+                        <div class="settings-option-card" data-profile-privacy role="button" tabindex="0">
+                            <div class="settings-option-left">
+                                <div class="settings-icon-circle">
+                                    <i class="fa-solid fa-lock"></i>
+                                </div>
+                                <div>
+                                    <div class="settings-option-title">Privacy and Policy</div>
+                                    <div class="settings-option-desc">Learn where your account and organizer data are stored</div>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right" style="color:var(--text-muted); font-size:0.9rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Update Profile Details Modal matching prototype image 925121755 -->
+    <div class="modal-backdrop-overlay" id="editProfileModal" role="dialog" aria-modal="true" aria-labelledby="editProfileTitle">
+        <div class="modal-dialog-box" style="max-width: 600px;">
+            <div class="modal-header-row" style="margin-bottom: 8px;">
+                <div>
+                    <h2 class="modal-header-title" id="editProfileTitle" style="font-size: 1.5rem;">Update Profile Details</h2>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">Update your personal information, phone number, and family role</div>
+                </div>
+                <button type="button" class="btn-modal-close" data-action="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="editProfileForm" novalidate style="margin-top: 20px;">
+                <!-- Full Name -->
+                <div class="form-field-pill">
+                    <label for="editFullName">Full Name</label>
+                    <div class="input-pill-wrapper">
+                        <i class="fa-solid fa-user input-pill-icon"></i>
+                        <input type="text" id="editFullName" name="name" class="input-pill" maxlength="80" autocomplete="name" required>
+                    </div>
+                </div>
+
+                <!-- Mobile Phone -->
+                <div class="form-field-pill">
+                    <label for="editPhone">Mobile Phone</label>
+                    <div class="input-pill-wrapper phone-input-pill">
+                        <i class="fa-solid fa-phone input-pill-icon"></i>
+                        <span class="phone-prefix" aria-hidden="true">+63</span>
+                        <input type="tel" id="editPhone" name="phone" class="input-pill" placeholder="9171234567" inputmode="numeric" pattern="9[0-9]{9}" autocomplete="tel-national" aria-label="Mobile Phone, Philippine country code +63" required>
+                    </div>
+                </div>
+
+                <!-- Date of Birth -->
+                <div class="form-field-pill">
+                    <label for="editDob">Date of Birth (optional)</label>
+                    <div class="input-pill-wrapper">
+                        <i class="fa-solid fa-calendar-days input-pill-icon"></i>
+                        <input type="date" id="editDob" name="dob" class="input-pill" min="1900-01-01" autocomplete="bday">
+                    </div>
+                </div>
+
+                <!-- Civil Status -->
+                <div class="form-field-pill">
+                    <label for="editCivilStatus">Civil Status (optional)</label>
+                    <div class="input-pill-wrapper">
+                        <i class="fa-solid fa-heart input-pill-icon"></i>
+                        <select name="civilStatus" id="editCivilStatus" class="input-pill" style="cursor: pointer; -webkit-appearance: none; appearance: none;">
+                            <option value="">Not specified</option>
+                            <option value="Single">Single</option>
+                            <option value="Married">Married</option>
+                            <option value="Divorced">Divorced</option>
+                            <option value="Widowed">Widowed</option>
+                            <option value="Separated">Separated</option>
+                            <option value="Civil Partnership">Civil Partnership</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down" style="position: absolute; right: 20px; color: var(--text-muted); font-size: 0.85rem; pointer-events: none;"></i>
+                    </div>
+                </div>
+
+                <!-- Age & Role Row -->
+                <div class="form-grid-2">
+                    <div class="form-field-pill">
+                        <label for="editAge">Age</label>
+                        <div class="input-pill-wrapper">
+                            <i class="fa-solid fa-cake-candles input-pill-icon"></i>
+                            <input type="text" id="editAge" name="age" class="input-pill" placeholder="N/A" aria-label="Age calculated from date of birth" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-field-pill">
+                        <label for="editRole">Role</label>
+                        <div class="input-pill-wrapper">
+                            <i class="fa-solid fa-user-group input-pill-icon"></i>
+                            <select name="role" id="editRole" class="input-pill" style="cursor: pointer; -webkit-appearance: none; appearance: none;">
+                                <option value="Mom">Mom</option>
+                                <option value="Dad">Dad</option>
+                                <option value="Solo Parent">Solo Parent</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down" style="position: absolute; right: 20px; color: var(--text-muted); font-size: 0.85rem; pointer-events: none;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="form-error" role="alert" hidden></p>
+                <div style="display: flex; justify-content: flex-end; gap: 14px; margin-top: 20px;">
+                    <button type="button" class="btn-dialog-no" data-action="close-modal" style="padding: 10px 24px;">Cancel</button>
+                    <button type="submit" id="profileSubmitBtn" class="btn-dialog-yes" style="padding: 10px 28px;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal matching prototype image 926451262_4567172740226431 -->
+    <div class="modal-backdrop-overlay" id="logoutConfirmModal">
+        <div class="logout-dialog-box">
+            <div class="logout-icon-circle"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Are you sure you want to log out?</h3>
+            <div class="logout-actions-row">
+                <button type="button" class="btn-dialog-no" data-action="close-modal">No</button>
+                <button type="button" class="btn-dialog-yes" data-action="confirm-logout">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop-overlay" id="profilePhotoPreviewModal" role="dialog" aria-modal="true" aria-labelledby="profilePhotoTitle">
+        <div class="modal-dialog-box profile-photo-dialog">
+            <div class="modal-header-row"><h2 class="modal-header-title" id="profilePhotoTitle">Use this profile photo?</h2><button type="button" class="btn-modal-close" data-action="close-modal" aria-label="Cancel photo change"><i class="fa-solid fa-xmark"></i></button></div>
+            <img id="profilePhotoPreview" class="profile-photo-preview" alt="Preview of your new profile photo">
+            <p class="form-help">Your photo changes after you confirm.</p>
+            <p class="form-error" id="profilePhotoError" role="alert" hidden></p>
+            <div class="profile-dialog-actions"><button type="button" class="btn-dialog-no" data-action="close-modal">Cancel</button><button type="button" class="btn-dialog-yes" id="confirmProfilePhotoBtn">Use Photo</button></div>
+        </div>
+    </div>
+    <div class="modal-backdrop-overlay" id="profilePrivacyModal" role="dialog" aria-modal="true" aria-labelledby="profilePrivacyTitle">
+        <div class="modal-dialog-box">
+            <div class="modal-header-row"><h2 class="modal-header-title" id="profilePrivacyTitle">Privacy and storage</h2><button type="button" class="btn-modal-close" data-action="close-modal" aria-label="Close privacy information"><i class="fa-solid fa-xmark"></i></button></div>
+            <p>Your account details and profile photo are saved by this local server. Passwords are stored as salted hashes.</p>
+            <p class="profile-storage-info">Tasks, groceries, theme preferences, and profile visit streaks are saved in this browser for your account. Use the same browser to access that organizer data.</p>
+            <p class="profile-storage-info" id="profileStorageStatus"></p>
+            <div class="profile-dialog-actions"><button type="button" class="btn-dialog-yes" data-action="close-modal">Done</button></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="prototypeToast" class="prototype-toast">
+        <i class="fa-solid fa-circle-check"></i> <span>Profile updated.</span>
+    </div>
+
+    <script src="/shared/validation.js"></script>
+    <script src="/domain.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>

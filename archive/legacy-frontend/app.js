@@ -89,7 +89,20 @@
   let state, authMode = 'login', taskFilter = 'all', selectedDate = today(), calendarMonth = parseDay(today());
   let fullCalendar = false, groceryHistory = false, modalSubmit = null, previousFocus = null;
   const routes = ['home','tasks','calendar','grocery','profile','help','faq','report','privacy'];
-  const route = () => routes.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'home';
+  const route = () => { const name=location.hash.slice(1).split('?')[0];return routes.includes(name)?name:'home'; };
+  function readTaskFilter() {
+    const params=new URLSearchParams(location.hash.split('?')[1]||'');
+    const category=params.get('category'),filter=params.get('filter');
+    return Object.hasOwn(categories,category)?category:['today','completed'].includes(filter)?filter:'all';
+  }
+  function taskViewTitle() {
+    return ({personal:'Personal Tasks',family:'Family Tasks',household:'Household Tasks',pill:'Pill Reminders',today:"Today's Tasks",completed:'Completed Tasks'})[taskFilter]||'Tasks & Reminders';
+  }
+  function openTaskFilter(filter) {
+    if(!Object.hasOwn(categories,filter)&&!['all','today','completed'].includes(filter))return;
+    taskFilter=filter;
+    setRoute(Object.hasOwn(categories,filter)?`tasks?category=${filter}`:filter==='all'?'tasks':`tasks?filter=${filter}`);
+  }
   function brand() { return '<a class="brand" href="#home" aria-label="ParenTech home"><img class="brand-logo" src="assets/logo.png" alt=""><img class="brand-wordmark" src="assets/wordmark.png" alt="ParenTech"></a>'; }
   function buttonIcon(name, action, label, extra = '', cls = '') {
     extra = extra.replace(/class="([^"]*)"/g, (_, value) => { cls += ' ' + value; return ''; });
@@ -106,10 +119,11 @@
   }
   function render() {
     state = store.getState();
+    if (route()==='tasks') taskFilter=readTaskFilter();
     if (state.user && route() === 'profile') { store.recordProfileView(); state = store.getState(); }
     applyTheme();
     app.innerHTML = state.user ? renderShell() : renderAuth();
-    document.title = state.user ? `${({home:'Home',tasks:'Tasks',calendar:'Calendar',grocery:'Groceries',profile:'Profile',help:'Help',faq:'FAQs',report:'Report a problem',privacy:'Privacy'})[route()]} · ParenTech` : 'Welcome · ParenTech';
+    document.title = state.user ? `${route()==='tasks'?taskViewTitle():({home:'Home',calendar:'Calendar',grocery:'Groceries',profile:'Profile',help:'Help',faq:'FAQs',report:'Report a problem',privacy:'Privacy'})[route()]} · ParenTech` : 'Welcome · ParenTech';
     if (state.user && route() === 'home') checkReminders();
     scheduleReminders();
   }
@@ -136,13 +150,13 @@
     return `<div class="field" data-field="${name}"><label for="${name}">${label}</label><div class="password-field">${icon('lock','input-icon')}<input id="${name}" name="${name}" type="password" required minlength="${autocomplete==='new-password'?8:1}" data-maxlength="${validation.LIMITS.password}" autocomplete="${autocomplete}" ${autocomplete==='new-password'?'aria-describedby="signup-password-help"':''} autocapitalize="none" spellcheck="false" placeholder="${label}">${buttonIcon('eye','password',`Show ${label.toLowerCase()}`,`data-target="${name}"`)}</div></div>`;
   }
   function profileFields(user = {}) {
-    return `${field('Full Name','name','text',user.name,'required maxlength="80" autocomplete="name"')}${field('Mobile Phone','phone','tel',user.phone,'required autocomplete="tel"')}${field('Date of Birth (optional)','dob','date',user.dob,`max="${today()}" autocomplete="bday"`)}${selectField('Civil Status','civilStatus',['Single','Married','Widowed','Divorced','Separated','Civil Partnership'],user.civilStatus,false)}<div class="form-grid">${field('Age (optional)','age','number',user.age??'','min="0" max="150" step="1" inputmode="numeric" placeholder="N/A"')}${selectField('Role','role',['Mom','Dad','Solo Parent'],user.role)}</div>`;
+    return `${field('Full Name','name','text',user.name,'required maxlength="80" autocomplete="name"')}${field('Mobile Phone','phone','tel',user.phone,'required autocomplete="tel"')}${field('Date of Birth (optional)','dob','date',user.dob,`max="${today()}" autocomplete="bday"`)}${selectField('Civil Status','civilStatus',['Single','Married','Widowed','Divorced','Separated','Civil Partnership'],user.civilStatus,false)}<div class="form-grid">${field('Age','age','text',store.getAge(user.dob)??'','readonly aria-label="Age calculated from date of birth" placeholder="N/A"')}${selectField('Role','role',['Mom','Dad','Solo Parent'],user.role)}</div>`;
   }
   function renderAuth() {
     const signup = authMode === 'signup';
     const phone = field('Phone Number','phone','tel','','required autocomplete="tel" placeholder="+63"');
     const passwords = signup ? `<div class="form-grid password-grid">${passwordField('Password','password','new-password')}${passwordField('Confirm Password','confirmPassword','new-password')}</div><p class="form-hint" id="signup-password-help">Use 8 to 128 characters with an uppercase letter and a number.</p><div id="signup-password-strength" class="password-strength" data-strength="empty" role="status" aria-live="polite"><span class="password-strength-bar"></span><span id="password-strength-text">Enter a password to see its strength.</span></div>` : passwordField('Password','password','current-password');
-    const fields = signup ? `${field('Full Name','name','text','','required maxlength="80" autocomplete="name" placeholder="Full Name"')}<div class="form-grid">${phone}${field('Date of Birth (optional)','dob','date','',`max="${today()}" autocomplete="bday" aria-label="Date of Birth"`)}</div><div class="form-grid">${selectField('Civil Status','civilStatus',['Single','Married','Widowed','Divorced','Separated','Civil Partnership'],'',false)}${field('Age (optional)','age','number','','min="0" max="150" step="1" inputmode="numeric" placeholder="N/A"')}</div>${selectField('Role','role',['Mom','Dad','Solo Parent'])}` : phone;
+    const fields = signup ? `${field('Full Name','name','text','','required maxlength="80" autocomplete="name" placeholder="Full Name"')}<div class="form-grid">${phone}${field('Date of Birth (optional)','dob','date','',`max="${today()}" autocomplete="bday" aria-label="Date of Birth"`)}</div><div class="form-grid">${selectField('Civil Status','civilStatus',['Single','Married','Widowed','Divorced','Separated','Civil Partnership'],'',false)}${field('Age','age','text','','readonly aria-label="Age calculated from date of birth" placeholder="N/A"')}</div>${selectField('Role','role',['Mom','Dad','Solo Parent'])}` : phone;
     const form = `<form novalidate class="auth-form" data-form="${signup?'signup':'login'}">${fields}${passwords}<p class="form-error" role="alert" hidden></p><button class="btn btn-primary auth-submit" type="submit">${signup?'SIGN UP':'LOGIN'}</button></form><p class="auth-switch">${signup?'Already have an account?':'Don\'t have an account?'} <button class="text-button" data-action="auth-switch">${signup?'Login':'Sign Up'}</button></p>${storageNotice()}`;
     return signup ? `<div class="auth-screen auth-signup"><div class="signup-layout"><section class="signup-brand">${brand()}<h1>Create your account</h1></section><section class="auth-card signup">${form}</section></div></div>` : `<div class="auth-screen auth-login"><section class="auth-card login">${brand()}<p class="auth-lead">Welcome back! Please login to your account.</p>${form}</section></div>`;
   }
@@ -157,7 +171,7 @@
   function heading(eyebrow, title, description, actions = '') {
     return `<div class="page-heading"><h1>${title}</h1><div class="heading-actions">${actions}</div></div>`;
   }
-  function addTaskButton(label='Add task',date='') { return `<button class="btn btn-purple" data-action="new-task" ${date?`data-date="${date}"`:''}>${icon('plus')}${label}</button>`; }
+  function addTaskButton(label='Add task',date='',category='') { return `<button class="btn btn-purple" data-action="new-task" ${date?`data-date="${date}"`:''} ${category?`data-category="${category}"`:''}>${icon('plus')}${label}</button>`; }
   function taskRow(task) {
     const cat = categories[task.category] || categories.personal;
     const completion = task.category==='pill' ? (task.completed?'Mark not taken':'Mark taken') : (task.completed?'Mark incomplete':'Complete');
@@ -169,12 +183,14 @@
   function renderHome() {
     const todays=sortedTasks(state.tasks.filter(t=>t.date===today()));
     const upcoming=sortedTasks(state.tasks.filter(t=>!t.completed&&t.date>=today()));
-    return `<h1 class="home-greeting">Hello, ${esc(state.user.name)}!</h1><div class="stats-grid">${Object.entries(categories).map(([key,cat])=>`<button class="stat-card ${key}" data-action="filter-category" data-category="${key}"><span class="stat-label">${cat.label}</span><span class="stat-icon">${icon(cat.icon)}</span><span class="stat-number">${state.tasks.filter(t=>t.category===key&&!t.completed).length}</span></button>`).join('')}</div><div class="home-sections"><section class="home-section"><div class="panel-header"><h2>Today's Tasks</h2><button class="text-button" data-action="today-tasks">See All</button></div><div class="task-list">${todays.length?todays.map(taskRow).join(''):'<div class="home-empty">No tasks or reminders scheduled for today.</div>'}</div></section><section class="home-section"><div class="panel-header"><h2>Upcoming Reminders</h2><button class="text-button" data-action="notifications">See All</button></div><div class="task-list">${upcoming.length?upcoming.map(taskRow).join(''):'<div class="home-empty">No upcoming reminders.</div>'}</div></section></div>`;
+    return `<h1 class="home-greeting">Hello, ${esc(state.user.role)}!</h1><div class="stats-grid">${Object.entries(categories).map(([key,cat])=>`<button class="stat-card ${key}" data-action="filter-category" data-category="${key}" aria-label="View ${esc(cat.label)}, ${state.tasks.filter(task=>task.category===key&&!task.completed).length} pending"><span class="stat-label">${cat.label}</span><span class="stat-icon">${icon(cat.icon)}</span><span class="stat-number">${state.tasks.filter(t=>t.category===key&&!t.completed).length}</span></button>`).join('')}</div><div class="home-sections"><section class="home-section"><div class="panel-header"><h2>Today's Tasks</h2><button class="text-button" data-action="today-tasks">See All</button></div><div class="task-list">${todays.length?todays.map(taskRow).join(''):'<div class="home-empty">No tasks or reminders scheduled for today.</div>'}</div></section><section class="home-section"><div class="panel-header"><h2>Upcoming Reminders</h2><button class="text-button" data-action="notifications">See All</button></div><div class="task-list">${upcoming.length?upcoming.map(taskRow).join(''):'<div class="home-empty">No upcoming reminders.</div>'}</div></section></div>`;
   }
   function renderTasks() {
     const list=sortedTasks(state.tasks.filter(t=>taskFilter==='all'||taskFilter==='today'&&t.date===today()||taskFilter==='completed'&&t.completed||t.category===taskFilter));
     const tabs=[['all','All Tasks'],['today',"Today's Tasks"],...Object.entries(categories).map(([k,v])=>[k,v.label]),['completed','Completed']];
-    return `${heading('','Tasks & Reminders','')}<div class="filter-tabs" role="group" aria-label="Filter tasks">${tabs.map(([key,label])=>`<button class="filter-tab ${taskFilter===key?'active':''}" data-action="task-filter" data-filter="${key}" aria-pressed="${taskFilter===key}">${label}</button>`).join('')}</div><div class="task-list">${list.length?list.map(taskRow).join(''):'<div class="home-empty">No tasks or reminders in this category.</div>'}</div>`;
+    const category=Object.hasOwn(categories,taskFilter)?taskFilter:'';
+    const actions=`<button class="btn btn-secondary" data-route="home">${icon('left')}Home</button>${addTaskButton(category==='pill'?'Add reminder':'Add task','',category)}`;
+    return `${heading('',taskViewTitle(),'',actions)}<div class="filter-tabs" role="group" aria-label="Filter tasks">${tabs.map(([key,label])=>`<button class="filter-tab ${taskFilter===key?'active':''}" data-action="task-filter" data-filter="${key}" aria-pressed="${taskFilter===key}">${label}</button>`).join('')}</div><p class="task-list-summary">${list.filter(task=>!task.completed).length} pending · ${list.filter(task=>task.completed).length} ${category==='pill'?'taken':'completed'}</p><div class="task-list">${list.length?list.map(taskRow).join(''):`<div class="home-empty">${category?`No ${category==='pill'?'pill reminders':categories[category].short.toLowerCase()+' tasks'} yet.`:'No tasks or reminders in this view.'}</div>`}</div>`;
   }
 function monthMarkup(date) {
   const year = date.getFullYear(), month = date.getMonth();
@@ -195,14 +211,14 @@ function renderCalendar() {
 }
 function renderGrocery() {
   const purchases = [...state.purchases].sort((a, b) => b.purchasedAt.localeCompare(a.purchasedAt));
-  const purchaseRow = purchase => `<button class="purchased-row" data-action="restore-purchase" data-id="${esc(purchase.id)}" aria-label="Add ${esc(purchase.name)} to the grocery list again"><span class="purchase-check">${icon('check')}</span><span>${esc(purchase.name)}</span></button>`;
+  const purchaseRow = purchase => `<button class="purchased-row" data-action="restore-purchase" data-id="${esc(purchase.id)}" aria-label="Add ${esc(purchase.name)} to the grocery list again"><span class="purchase-check">${icon('check')}</span><span class="purchase-name">${esc(purchase.name)}</span><span class="purchase-quantity">×${esc(purchase.quantity??1)}</span></button>`;
   if (groceryHistory) {
     const groups = {};
     purchases.forEach(purchase => (groups[dayKey(new Date(purchase.purchasedAt))] ||= []).push(purchase));
     return `<div class="grocery-history-page"><div class="history-heading"><button class="text-button" data-action="grocery-history">${icon('left')}<span>Grocery History</span></button></div>${purchases.length?Object.entries(groups).map(([date, items]) => `<section class="history-group"><h2 class="history-date">${prettyDay(date, { month: 'long', day: '2-digit', year: 'numeric' })}</h2><div class="history-items">${items.map(purchaseRow).join('')}</div></section>`).join(''):empty('history','No purchase history yet','Check an item off your grocery list after you buy it.')}</div>`;
   }
   const recommendations = purchases.filter((purchase, i, all) => all.findIndex(other => other.name.toLowerCase() === purchase.name.toLowerCase()) === i && !state.groceries.some(item => item.name.toLowerCase() === purchase.name.toLowerCase())).slice(0, 6);
-  return `<div class="reference-grocery-page ${purchases.length ? 'has-purchases' : ''}"><section class="reference-grocery-panel"><div class="grocery-title-row"><div><h1>Grocery List</h1><p>${state.groceries.length} items remaining</p></div>${buttonIcon('history', 'grocery-history', 'Grocery History')}</div><div class="grocery-form-group"><form novalidate class="grocery-form" data-form="grocery"><input class="input" name="groceryName" aria-label="Grocery item" maxlength="100" placeholder="Add grocery item here." required><button class="btn btn-primary" type="submit">ADD</button></form></div><div class="grocery-list">${state.groceries.map(item => `<div class="grocery-row"><button class="check-button" data-action="purchase-grocery" data-id="${esc(item.id)}" aria-label="Mark ${esc(item.name)} purchased"></button><span class="grocery-name">${esc(item.name)}</span><div class="row-actions">${buttonIcon('edit', 'edit-grocery', `Edit ${item.name}`, `data-id="${esc(item.id)}"`)}${buttonIcon('trash', 'delete-grocery', `Delete ${item.name}`, `data-id="${esc(item.id)}"`)}</div></div>`).join('')}</div></section>${purchases.length ? `<div class="grocery-bottom-panels"><section class="purchased-panel"><h2>Recently Purchased</h2><p class="purchase-date">${prettyDay(dayKey(new Date(purchases[0].purchasedAt)), { month: 'long', day: '2-digit', year: 'numeric' })}</p><div class="purchased-items">${purchases.slice(0, 3).map(purchaseRow).join('')}</div></section><section class="recommended-panel"><h2>Recommended</h2><div class="recommendations">${recommendations.map(purchase => `<button class="recommendation" data-action="restore-purchase" data-id="${esc(purchase.id)}">+ ${esc(purchase.name)}</button>`).join('')}</div><p>You recently bought these items, would you like to add them again?</p></section></div>` : ''}</div>`;
+  return `<div class="reference-grocery-page ${purchases.length ? 'has-purchases' : ''}"><section class="reference-grocery-panel"><div class="grocery-title-row"><div><h1>Grocery List</h1><p>${state.groceries.length} items remaining</p></div>${buttonIcon('history', 'grocery-history', 'Grocery History')}</div><div class="grocery-form-group"><form novalidate class="grocery-form" data-form="grocery"><input class="input" name="groceryName" aria-label="Grocery item" maxlength="100" placeholder="Add grocery item here." required><div class="grocery-quantity-field"><label for="grocery-quantity">Qty</label><input id="grocery-quantity" name="quantity" type="text" inputmode="numeric" pattern="[0-9]*" value="1" data-maxlength="4" required autocomplete="off" aria-label="Quantity"></div><button class="btn btn-primary" type="submit">ADD</button></form></div><div class="grocery-list">${state.groceries.map(item => `<div class="grocery-row"><button class="check-button" data-action="purchase-grocery" data-id="${esc(item.id)}" aria-label="Mark ${esc(item.name)} purchased"></button><div class="grocery-item-details"><span class="grocery-name">${esc(item.name)}</span><span class="grocery-quantity badge">Qty: ${esc(item.quantity??1)}</span></div><div class="row-actions">${buttonIcon('edit', 'edit-grocery', `Edit ${item.name}`, `data-id="${esc(item.id)}"`)}${buttonIcon('trash', 'delete-grocery', `Delete ${item.name}`, `data-id="${esc(item.id)}"`)}</div></div>`).join('')}</div></section>${purchases.length ? `<div class="grocery-bottom-panels"><section class="purchased-panel"><h2>Recently Purchased</h2><p class="purchase-date">${prettyDay(dayKey(new Date(purchases[0].purchasedAt)), { month: 'long', day: '2-digit', year: 'numeric' })}</p><div class="purchased-items">${purchases.slice(0, 3).map(purchaseRow).join('')}</div></section><section class="recommended-panel"><h2>Recommended</h2><div class="recommendations">${recommendations.map(purchase => `<button class="recommendation" data-action="restore-purchase" data-id="${esc(purchase.id)}">+ ${esc(purchase.name)} <span class="purchase-quantity">×${esc(purchase.quantity??1)}</span></button>`).join('')}</div><p>You recently bought these items, would you like to add them again?</p></section></div>` : ''}</div>`;
 }
   function settingRow(ic,title,description,action,value='') {
     return `<button class="settings-row" data-action="${action}"><span class="settings-icon">${icon(ic)}</span><span class="settings-copy"><h3>${title}</h3><p>${description}</p></span><span class="settings-value">${value}</span>${icon('chevron')}</button>`;
@@ -210,7 +226,7 @@ function renderGrocery() {
 function renderProfile() {
   const user = state.user;
   const phone = user.phone.startsWith('+63') ? `+63 ${user.phone.slice(3)}` : user.phone;
-  return `<div class="profile-layout"><section class="profile-card"><button class="profile-avatar avatar profile-photo-button" data-action="choose-photo" aria-label="Change profile photo">${avatarMarkup(user)}<span class="photo-edit-badge">${icon('edit')}</span></button><input id="profile-photo" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="profile-info"><h2>${esc(user.name)} <span class="profile-heart">♥</span></h2><p>${esc(phone)}</p><button class="btn btn-secondary" data-action="edit-profile">${icon('edit')}Edit Profile</button></div><div class="profile-stats"><div class="profile-badges"><span class="badge">${esc(user.role)}</span><span class="badge">Age: ${user.age??'N/A'}</span></div><div class="profile-stat-grid"><div class="profile-stat"><strong>${state.tasks.filter(task => task.completed).length}</strong><span>Tasks Done</span></div><div class="profile-stat"><strong>${store.getProfileStreak()}</strong><span>Day Streak</span></div><div class="profile-stat"><strong>${store.getGroceryDayCount()}</strong><span>Groceries<br>Done</span></div></div></div></section><section class="settings-list">${settingRow('bell', 'Notifications Settings', 'Learn about task and medicine alerts', 'notification-settings')}${settingRow('circle', 'Theme Mode', ({dark:'Dark Mode',light:'Light Mode',system:'System Default'})[state.settings.theme], 'theme')}${settingRow('lock', 'Privacy and Policy', 'Read about your privacy and saved data', 'privacy')}${settingRow('help', 'Help and Support', 'Get assistance, FAQs and contact support', 'help')}</section></div>`;
+  return `<div class="profile-layout"><section class="profile-card"><button class="profile-avatar avatar profile-photo-button" data-action="choose-photo" aria-label="Change profile photo">${avatarMarkup(user)}<span class="photo-edit-badge">${icon('edit')}</span></button><input id="profile-photo" type="file" accept="image/png,image/jpeg,image/webp" hidden><div class="profile-info"><h2>${esc(user.name)} <span class="profile-heart">♥</span></h2><p>${esc(phone)}</p><button class="btn btn-secondary" data-action="edit-profile">${icon('edit')}Edit Profile</button></div><div class="profile-stats"><div class="profile-badges"><span class="badge">${esc(user.role)}</span><span class="badge">Age: ${store.getAge(user.dob)??'N/A'}</span></div><div class="profile-stat-grid"><div class="profile-stat"><strong>${state.tasks.filter(task => task.completed).length}</strong><span>Tasks Done</span></div><div class="profile-stat"><strong>${store.getProfileStreak()}</strong><span>Day Streak</span></div><div class="profile-stat"><strong>${store.getGroceryDayCount()}</strong><span>Groceries<br>Done</span></div></div></div></section><section class="settings-list">${settingRow('bell', 'Notifications Settings', 'Learn about task and medicine alerts', 'notification-settings')}${settingRow('circle', 'Theme Mode', ({dark:'Dark Mode',light:'Light Mode',system:'System Default'})[state.settings.theme], 'theme')}${settingRow('lock', 'Privacy and Policy', 'Read about your privacy and saved data', 'privacy')}${settingRow('help', 'Help and Support', 'Get assistance, FAQs and contact support', 'help')}</section></div>`;
 }
 function renderHelp() {
   const headset = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13V11a8 8 0 0 1 16 0v2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="2" y="11" width="5" height="9" rx="1" fill="currentColor"/><rect x="17" y="11" width="5" height="9" rx="1" fill="currentColor"/><path d="M20 18v4h-7" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
@@ -275,7 +291,7 @@ function renderReport() {
     openModal('Theme Mode',`<form novalidate data-form="modal" data-validation="settings"><div class="theme-options">${[['light','Light'],['dark','Dark'],['system','System Default']].map(([value,label])=>`<label class="theme-option"><input type="radio" name="theme" value="${value}" ${state.settings.theme===value?'checked':''}>${icon(value==='dark'?'moon':'sun')}<span>${label}</span></label>`).join('')}</div><p class="form-hint">System Default follows your device’s appearance.</p><p class="form-error" hidden role="alert"></p><div class="modal-footer"><button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-purple">Apply theme</button></div></form>`,data=>{store.updateSettings({theme:data.theme});closeModal();render();});
   }
   function showPersonalInformation() {
-    openModal('Personal Information',`<div class="prose-panel"><p><strong>Name:</strong> ${esc(state.user.name)}</p><p><strong>Mobile:</strong> ${esc(state.user.phone)}</p><p><strong>Date of birth:</strong> ${state.user.dob?prettyDay(state.user.dob):'Not specified'}</p><p><strong>Civil status:</strong> ${esc(state.user.civilStatus||'Not specified')}</p><p><strong>Age:</strong> ${state.user.age??'N/A'}</p><p><strong>Role:</strong> ${esc(state.user.role)}</p></div><div class="modal-footer"><button class="btn btn-secondary" data-action="close-modal">Done</button><button class="btn btn-purple" data-action="edit-profile">Edit Profile</button></div>`);
+    openModal('Personal Information',`<div class="prose-panel"><p><strong>Name:</strong> ${esc(state.user.name)}</p><p><strong>Mobile:</strong> ${esc(state.user.phone)}</p><p><strong>Date of birth:</strong> ${state.user.dob?prettyDay(state.user.dob):'Not specified'}</p><p><strong>Civil status:</strong> ${esc(state.user.civilStatus||'Not specified')}</p><p><strong>Age:</strong> ${store.getAge(state.user.dob)??'N/A'}</p><p><strong>Role:</strong> ${esc(state.user.role)}</p></div><div class="modal-footer"><button class="btn btn-secondary" data-action="close-modal">Done</button><button class="btn btn-purple" data-action="edit-profile">Edit Profile</button></div>`);
   }
   async function previewPhoto(file) {
     const selection = ++photoSelection,version=modalVersion;
@@ -467,7 +483,7 @@ function renderReport() {
     form.dataset.submitting = 'true'; form.setAttribute('aria-busy', 'true'); form.classList.add('is-submitting');
     try {
       if(kind==='login'||kind==='signup'){await store[kind](data);authMode='login';location.hash='home';render();toast(kind==='signup'?'Welcome to your family space.':'Welcome back.');}
-      else if(kind==='grocery'){store.addGrocery(data.groceryName);render();document.querySelector('[name=groceryName]')?.focus();toast('Added to your grocery list.');}
+      else if(kind==='grocery'){store.addGrocery(data.groceryName,data.quantity);render();document.querySelector('[name=groceryName]')?.focus();toast('Added to your grocery list.');}
       else if(kind==='report'){store.saveReport(data);openModal('Report submitted',`<p class="confirm-description">Thank you for describing the issue. This local version only confirms your report; it is not saved or sent.</p><div class="modal-footer"><button class="btn btn-purple" data-action="report-done">Done</button></div>`);}
       else if(kind==='modal'&&modalSubmit){await modalSubmit(data,form);}
     } catch(error){
@@ -495,13 +511,13 @@ function renderReport() {
         case 'menu':document.body.classList.toggle('account-open');break;
         case 'close-drawer':document.body.classList.remove('sidebar-open','account-open');break;
         case 'theme':showThemeOptions();break;
-        case 'new-task':showTaskModal('',el.dataset.date,el.dataset.category);break;
+        case 'new-task':showTaskModal('',el.dataset.date,el.dataset.category||(route()==='tasks'&&Object.hasOwn(categories,taskFilter)?taskFilter:'personal'));break;
         case 'edit-task':showTaskModal(id);break;
         case 'toggle-task':{const date=daySheetDate;store.toggleTask(id);closeModal();render();if(date)showDayTasks(date);break;}
         case 'delete-task':{const task=state.tasks.find(t=>t.id===id);confirm('Remove this task?',`“${task.title}” will be removed from your tasks and calendar.`,()=>{store.deleteTask(id);toast('Task removed.');},'Remove task');break;}
-        case 'task-filter':taskFilter=el.dataset.filter;render();break;
-        case 'today-tasks':taskFilter='today';setRoute('tasks');break;
-        case 'filter-category':taskFilter=el.dataset.category;setRoute('tasks');break;
+        case 'task-filter':openTaskFilter(el.dataset.filter);break;
+        case 'today-tasks':openTaskFilter('today');break;
+        case 'filter-category':openTaskFilter(el.dataset.category);break;
         case 'month-prev':calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()-(fullCalendar?12:1),1);render();break;
         case 'month-next':calendarMonth=new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()+(fullCalendar?12:1),1);render();break;
         case 'calendar-today':selectedDate=today();calendarMonth=parseDay(today());render();break;
@@ -513,7 +529,7 @@ function renderReport() {
         case 'purchase-grocery':store.purchaseGrocery(id);render();toast('Checked off. Added to your purchase history.');break;
         case 'restore-purchase':store.restorePurchase(id);render();toast('Added back to your grocery list.');break;
         case 'delete-grocery':{const item=state.groceries.find(g=>g.id===id);confirm('Remove this item?',`Remove “${item.name}” from your grocery list?`,()=>store.deleteGrocery(id),'Remove item');break;}
-        case 'edit-grocery':{const item=state.groceries.find(g=>g.id===id);openModal('Edit grocery item',`<form novalidate data-form="modal" data-validation="grocery" data-item-id="${esc(item.id)}">${field('Item name','groceryName','text',item.name,'required maxlength="100"')}<p class="form-error" hidden role="alert"></p><div class="modal-footer"><button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-purple">Save changes</button></div></form>`,data=>{store.editGrocery(id,data.groceryName);closeModal();render();toast('Grocery item updated.');});break;}
+        case 'edit-grocery':{const item=state.groceries.find(g=>g.id===id);openModal('Edit grocery item',`<form novalidate data-form="modal" data-validation="grocery" data-item-id="${esc(item.id)}"><div class="form-grid">${field('Item name','groceryName','text',item.name,'required maxlength="100"')}${field('Quantity','quantity','text',item.quantity??1,'required inputmode="numeric" pattern="[0-9]*" data-maxlength="4" autocomplete="off"')}</div><p class="form-error" hidden role="alert"></p><div class="modal-footer"><button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-purple">Save changes</button></div></form>`,data=>{store.editGrocery(id,data.groceryName,data.quantity);closeModal();render();toast('Grocery item updated.');});break;}
         case 'edit-profile':openModal('Update Profile Details',`<form novalidate data-form="modal" data-validation="profile">${profileFields(state.user)}<p class="form-error" hidden role="alert"></p><div class="modal-footer"><button class="btn btn-secondary" type="button" data-action="close-modal">Cancel</button><button class="btn btn-purple" type="submit">Save Changes</button></div></form>`,async data=>{const version=modalVersion;await store.updateProfile(data);if(version!==modalVersion)return;closeModal();render();toast('Your profile is updated.');},'Edit Profile Details');modalRoot.querySelector('.modal')?.classList.add('profile-modal');break;
         case 'choose-photo':document.getElementById('profile-photo')?.click();break;
         case 'personal-information':showPersonalInformation();break;
@@ -586,7 +602,12 @@ function renderReport() {
   document.addEventListener('beforeinput', event => {
     const control = event.target;
     if (control.name === 'name' && typeof event.data === 'string' && /\p{N}/u.test(event.data) && event.cancelable !== false) { event.preventDefault(); return; }
-    if (control.name === 'age' && event.inputType?.startsWith('insert') && typeof event.data === 'string' && /[^0-9]/.test(event.data) && event.cancelable !== false) { event.preventDefault(); return; }
+    if (['age','quantity'].includes(control.name) && event.inputType?.startsWith('insert') && typeof event.data === 'string' && /[^0-9]/.test(event.data) && event.cancelable !== false) { event.preventDefault(); return; }
+    if (control.name === 'quantity' && event.inputType?.startsWith('insert') && typeof event.data === 'string') {
+      const start=control.selectionStart??control.value.length,end=control.selectionEnd??start;
+      if ((control.value.slice(0,start)+event.data+control.value.slice(end)).length>4 && event.cancelable!==false) event.preventDefault();
+      return;
+    }
     if (control.name !== 'phone' || event.isComposing || event.inputType === 'insertCompositionText') return;
     if (event.inputType?.startsWith('delete') || event.inputType === 'historyUndo' || event.inputType === 'historyRedo' || typeof event.data !== 'string') return;
     const start = control.selectionStart ?? control.value.length;
@@ -596,10 +617,20 @@ function renderReport() {
   });
   document.addEventListener('paste', event => {
     if (event.target.name === 'phone' && event.clipboardData) insertPhoneText(event, event.clipboardData.getData('text/plain'));
+    if (event.target.name === 'quantity' && event.clipboardData) insertQuantityText(event,event.clipboardData.getData('text/plain'));
   });
   document.addEventListener('drop', event => {
     if (event.target.name === 'phone' && event.dataTransfer) insertPhoneText(event, event.dataTransfer.getData('text/plain'));
+    if (event.target.name === 'quantity' && event.dataTransfer) insertQuantityText(event,event.dataTransfer.getData('text/plain'));
   });
+  function insertQuantityText(event,text) {
+    event.preventDefault();
+    const control=event.target,start=control.selectionStart??control.value.length,end=control.selectionEnd??start;
+    text=text.normalize('NFKC').trim();
+    const next=control.value.slice(0,start)+text+control.value.slice(end);
+    if(!/^[0-9]{1,4}$/.test(next)) { if(control.form)setFieldError(control.form,'quantity','Enter a whole quantity from 1 to 9,999.');return; }
+    control.setRangeText(text,start,end,'end');validateChangedField(control,true);
+  }
   document.addEventListener('compositionend', event => {
     if (event.target.name === 'phone') {
       filterPhoneInput(event.target);
@@ -621,11 +652,12 @@ function renderReport() {
     if(event.target.name==='password'&&event.target.form?.dataset.form==='signup')updatePasswordStrength(event.target.value);
     if(event.target.name==='dob'){const age=event.target.form?.elements.age;if(age){try{age.value=store.getAge(event.target.value) ?? '';}catch{age.value='';}}}
     if(event.target.id==='description'&&event.target.closest('[data-form="report"]'))document.getElementById('report-counter').textContent=`${event.target.value.length}/500`;
-    validateChangedField(event.target, overlongPhone);
+    validateChangedField(event.target, overlongPhone || event.target.name==='quantity');
   });
   document.addEventListener('focusout', event => validateChangedField(event.target, true));
   document.addEventListener('focusin',event=>{if(event.target.id==='global-search')search(event.target.value);});
   document.addEventListener('change',async event=>{
+    if(event.target.name==='dob'){const age=event.target.form?.elements.age;if(age)age.value=store.getAge(event.target.value)??'';}
     if(event.target.id==='profile-photo') { const file=event.target.files[0];event.target.value='';await previewPhoto(file);return; }
     if(event.target.name==='category'&&event.target.type==='radio'){event.target.closest('.category-picker').querySelectorAll('.radio-card').forEach(card=>card.classList.toggle('selected',card.contains(event.target)));}
     if(event.target.id==='screenshot')document.getElementById('upload-label').textContent=event.target.files[0]?.name||'Choose an image to reference in your report';

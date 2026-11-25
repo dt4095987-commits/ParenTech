@@ -11,12 +11,12 @@
 | Full name | Required, up to 80 characters; Unicode letters and marks, spaces, apostrophes, hyphens and periods. Spaces are normalized. Mononyms are accepted. |
 | Mobile phone | Philippine mobile number, normalized to `+639XXXXXXXXX`; accepts `09`, `9`, `639` and `+639` forms with common separators. Raw input is limited to 40 characters. |
 | Birthday | Optional actual calendar date, `YYYY-MM-DD`, from 1900 through today; blank is stored as an empty string. |
-| Age | Optional integer from 0 through 150; blank is stored as null and shown as N/A. Selecting a birthday can fill the editable age. Older records without an explicit age derive it from their birthday. |
+| Age | Calculated from the date of birth and current date. The form is read-only, and supplied age values cannot override the calculated result. Missing birthday produces null and displays N/A. Age is recalculated when reading profiles, including older records. |
 | Civil status / role | Civil status is optional; a nonblank value must match an option. Role is required and must be Mom, Dad, or Solo Parent. |
 | Signup password | 8–128 characters, including an uppercase letter and a number. Confirmation must match. Password spaces are preserved; control characters are rejected. |
 | Login password | Nonempty, up to 128 characters. Signup strength rules are not reapplied to existing credentials. |
 | Task | Title: 1–120 characters; optional description: up to 500. Valid date, required `HH:MM` time and one of the four task categories. Past dates remain valid for historical tasks. An update identifier must be valid. |
-| Grocery item | Required, up to 100 characters. Spaces and Unicode composition are normalized; duplicates are compared without letter case. Quantities and ordinary punctuation are allowed. |
+| Grocery item | Required name, up to 100 characters. Spaces and Unicode composition are normalized; duplicates are compared without letter case. Ordinary punctuation is allowed. Quantity must be a whole number from 1 to 9,999; omitted quantities on older records default to 1. Purchases and re-added items retain their quantities. |
 | Problem report | Bug / Crash, Feature Request, UI Issue, Account Issue, or Other; nonblank description up to 500 characters, optional valid email up to 150 characters and optional filename metadata up to 255 characters. Submissions are confirmed without being saved or sent. |
 | Screenshot | PNG, JPEG or WebP with matching extension and MIME type, nonempty, at most 10 MiB. Filenames cannot contain paths or control characters. |
 | Profile photo | Optional PNG, JPEG, or WebP image data URL, up to 2 MiB of image data, with a matching decoded image header. The browser resizes selected photos before the confirmed profile update. |
@@ -76,7 +76,7 @@ A missing header returns HTTP 400 with `ACCOUNT_ID_REQUIRED`; a header for anoth
 
 Forms show errors beside the relevant field, focus the first invalid field, preserve existing hint associations, and update errors when the user corrects a touched field. Password confirmation is checked again when the password changes. A pending submission disables the submit button and rejects a second submission on the same form.
 
-Sign-up also displays live password strength. Optional birthday, age, and civil status do not block registration when blank. A report needs a selected category and nonblank description; completing it shows a confirmation without adding a stored report record.
+Sign-up also displays live password strength. Optional birthday and civil status do not block registration when blank; age updates automatically from the selected birthday. A report needs a selected category and nonblank description; completing it shows a confirmation without adding a stored report record.
 
 Phone fields display a fixed `+63` country code, with the editable number and cursor starting beside it. Users enter ten national digits beginning with `9`; the country code cannot be edited or deleted. Complete `+639…`, `639…`, `09…` or national-number pastes and autofill are converted to national digits. Submission adds exactly one `+63` before shared validation and storage. Overlong pastes are rejected without clipping the number; overlong autofill stays visible with a validation error. Input fallback also handles drag-and-drop and completed IME composition. These browser conveniences do not relax the shared backend validation rules.
 

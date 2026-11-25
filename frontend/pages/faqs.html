@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frequently Asked Questions - ParenTech</title>
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#7337B8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/integration.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+    <div class="app-shell">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        <aside class="app-sidebar" id="appSidebar">
+            <nav class="sidebar-nav-list">
+                <a href="home.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Home</span>
+                </a>
+                <a href="calendar.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>Calendar</span>
+                </a>
+                <a href="grocery.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span>Grocery</span>
+                </a>
+                <a href="tasks.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>Tasks</span>
+                </a>
+                <a href="pills.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-capsules"></i>
+                    <span>Pill Reminders</span>
+                </a>
+                <a href="profile.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div style="height: 1px; background: var(--border-subtle); margin: 12px 16px;"></div>
+                <a href="faqs.html" class="sidebar-nav-item active">
+                    <i class="fa-solid fa-circle-question"></i>
+                    <span>FAQs</span>
+                </a>
+                <a href="report-problem.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-flag"></i>
+                    <span>Report a Problem</span>
+                </a>
+                <a href="help.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-headset"></i>
+                    <span>Help & Support</span>
+                </a>
+            </nav>
+            <div class="sidebar-bottom">
+                <button type="button" class="btn-sidebar-logout" data-action="logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="app-main-content">
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <a href="home.html" class="topbar-logo">
+                        <img src="../assets/img/logo.png" alt="ParenTech Logo">
+                        <span class="topbar-brand">Paren<span class="brand-tech">Tech</span></span>
+                    </a>
+                </div>
+
+                <div class="topbar-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="topbarSearchInput" placeholder="Search FAQs...">
+                </div>
+
+                <div class="topbar-right">
+                    <button type="button" class="icon-btn-round" data-action="toggle-theme" title="Toggle Dark/Light Mode">
+                        <i class="fa-solid fa-moon" data-theme-icon></i>
+                    </button>
+                    <button type="button" class="icon-btn-round" id="notifBtn" title="Reminders & Alarms">
+                        <i class="fa-solid fa-bell"></i>
+                        <span class="notif-badge"></span>
+                    </button>
+
+                    <div class="reminders-popup" id="remindersPopup">
+                        <div class="reminders-header">
+                            <div class="reminders-title"><i class="fa-solid fa-bell"></i> Reminders & Alarms</div>
+                            <button type="button" class="btn-modal-close" id="closeRemindersPopup" style="width:28px;height:28px;font-size:0.9rem;"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="reminders-body" id="remindersPopupBody">Loading reminders...</div>
+                    </div>
+
+                    <a href="profile.html" class="topbar-avatar" title="View Profile">
+                        <img src="../assets/img/avatar.jpg" alt="Your profile photo">
+                    </a>
+                </div>
+            </header>
+
+            <!-- Page Body matching Prototype Image 924503619 -->
+            <main class="app-page-body">
+                <div class="support-page-container">
+                    <div class="page-back-header">
+                        <button type="button" class="btn-back-round" data-action="navigate" data-page="profile.html">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <h1 class="page-greeting-title" style="font-size: 1.5rem; margin: 0;">FAQ's</h1>
+                    </div>
+
+                    <!-- Exclamation Badge Hero matching prototype -->
+                    <div class="support-hero-badge">
+                        <div class="support-hero-icon">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                        </div>
+                        <h2 style="font-size: 1.6rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">
+                            Frequently Asked Questions
+                        </h2>
+                        <p style="color: var(--text-muted); font-size: 0.95rem;">
+                            Find answers to common questions below.
+                        </p>
+                    </div>
+
+                    <!-- Accordion 1-4 matching prototype -->
+                    <div class="faq-card-item open" id="getting-started">
+                        <button type="button" class="faq-question-btn">
+                            <span>1. How do I create a task?</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size: 0.85rem; color: var(--text-muted); transition: var(--transition);"></i>
+                        </button>
+                        <div class="faq-answer-content">
+                            Open Tasks and click "Add Task", or use the floating "+" button on Home, Calendar, Tasks, Grocery, or Pill Reminders. Enter a title, choose a category (Personal, Family, Household, or Pill Reminder), select the date and time, and click "Create Task".
+                        </div>
+                    </div>
+
+                    <div class="faq-card-item" id="using-parentech">
+                        <button type="button" class="faq-question-btn">
+                            <span>2. How do pill reminders work?</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size: 0.85rem; color: var(--text-muted); transition: var(--transition);"></i>
+                        </button>
+                        <div class="faq-answer-content">
+                            On Pill Reminders, add a medication name, optional dosage, date, and intake time. Each reminder is scheduled once for the chosen date and time. Mark it as taken after the medication is taken.
+                        </div>
+                    </div>
+
+                    <div class="faq-card-item">
+                        <button type="button" class="faq-question-btn">
+                            <span>3. How do I use the Grocery List?</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size: 0.85rem; color: var(--text-muted); transition: var(--transition);"></i>
+                        </button>
+                        <div class="faq-answer-content">
+                            Enter an item and a whole-number quantity, then click "ADD". Mark it purchased to move it to Recently Purchased. Your recent purchases also appear in Recommended so you can add them again.
+                        </div>
+                    </div>
+
+                    <div class="faq-card-item">
+                        <button type="button" class="faq-question-btn">
+                            <span>4. How do I switch theme?</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size: 0.85rem; color: var(--text-muted); transition: var(--transition);"></i>
+                        </button>
+                        <div class="faq-answer-content">
+                            You can easily toggle between Light Mode and Dark Mode by clicking the moon/sun icon in the top header or through Profile &gt; Settings &gt; Theme Mode. Your preference is automatically saved.
+                        </div>
+                    </div>
+
+                    <div class="faq-card-item" id="troubleshooting">
+                        <button type="button" class="faq-question-btn">
+                            <span>5. What if a change does not save?</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size: 0.85rem; color: var(--text-muted); transition: var(--transition);"></i>
+                        </button>
+                        <div class="faq-answer-content">
+                            Check the message beside the form and correct any highlighted fields. If your session has expired, sign in again. For connection errors, wait until the connection is available and try again. The Report a Problem page lets you check report details; it does not send or save reports.
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Logout Confirmation Modal -->
+    <div class="modal-backdrop-overlay" id="logoutConfirmModal">
+        <div class="logout-dialog-box">
+            <div class="logout-icon-circle"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Are you sure you want to log out?</h3>
+            <div class="logout-actions-row">
+                <button type="button" class="btn-dialog-no" data-action="close-modal">No</button>
+                <button type="button" class="btn-dialog-yes" data-action="confirm-logout">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/shared/validation.js"></script>
+    <script src="/domain.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>

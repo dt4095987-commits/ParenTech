@@ -1,24 +1,81 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#7825a3">
-  <meta name="description" content="ParenTech family tasks, reminders, calendar and grocery list.">
-  <title>ParenTech</title>
-  <link rel="icon" type="image/png" href="assets/logo.png">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="layout.css">
-  <link rel="stylesheet" href="mobile-spacing.css">
-  <link rel="stylesheet" href="validation.css">
-  <script src="../shared/validation.js" defer></script>
-  <script src="domain.js" defer></script>
-  <script src="app.js" defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParenTech - Family Task Manager</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/integration.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/app.css">
 </head>
-<body data-theme="light">
-  <div id="app"></div>
-  <div id="modal-root"></div>
-  <div id="toast-stack" class="toast-stack" role="status" aria-live="polite"></div>
-  <noscript><p style="padding:2rem;font-family:system-ui">Please enable JavaScript to use ParenTech.</p></noscript>
+<body class="backend-loading">
+    <!-- Splash Screen matching prototype -->
+    <div class="splash-screen" id="splash">
+        <div class="splash-content">
+            <div class="splash-logo">
+                <img src="assets/img/logo.png" alt="ParenTech Logo">
+            </div>
+            <h1 class="splash-title">Paren<span class="tech-text">Tech</span></h1>
+            <p class="splash-tagline">Plan • Do • Enjoy (Family Task Manager)</p>
+            <div class="splash-spinner"></div>
+        </div>
+    </div>
+
+    <!-- Login Auth Page matching Prototype Image 926945536 -->
+    <div class="auth-page-wrapper">
+        <div class="auth-card-single">
+            <div class="auth-brand-side">
+                <div class="auth-logo-badge">
+                    <img src="assets/img/logo.png" alt="ParenTech Logo">
+                </div>
+                <h1 class="brand-title">Paren<span class="brand-tech">Tech</span></h1>
+                <p class="auth-subtitle">Welcome back! Please login to your account.</p>
+            </div>
+
+            <form id="loginForm" novalidate style="margin-top: 14px;">
+                <div class="form-field-pill">
+                    <label for="phone">Phone Number</label>
+                    <div class="input-pill-wrapper phone-input-pill">
+                        <i class="fa-solid fa-phone input-pill-icon"></i>
+                        <span class="phone-prefix" aria-hidden="true">+63</span>
+                        <input type="tel" id="phone" name="phone" class="input-pill" placeholder="9171234567" inputmode="numeric" pattern="9[0-9]{9}" autocomplete="tel-national" aria-label="Phone Number, Philippine country code +63" required>
+                    </div>
+                    <p class="form-help">Enter 10 digits beginning with 9 after +63.</p>
+                </div>
+
+                <div class="form-field-pill">
+                    <label for="password">Password</label>
+                    <div class="input-pill-wrapper">
+                        <i class="fa-solid fa-lock input-pill-icon"></i>
+                        <input type="password" id="password" name="password" class="input-pill" placeholder="Enter password" maxlength="128" autocomplete="current-password" required>
+                        <button type="button" class="input-pill-btn" id="togglePasswordBtn" data-password-target="password" aria-label="Show password" aria-pressed="false">
+                            <i class="fa-regular fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <p class="form-error" role="alert" hidden></p>
+                <button type="submit" class="btn-green-pill" id="loginSubmitBtn">
+                    LOGIN
+                </button>
+            </form>
+
+            <div class="auth-bottom-link">
+                Don't have an account? <a href="pages/signup.html">Sign Up</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prototype Toast -->
+    <div id="prototypeToast" class="prototype-toast">
+        <i class="fa-solid fa-circle-check"></i> <span></span>
+    </div>
+
+    <script src="/shared/validation.js"></script>
+    <script src="/domain.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/main.js"></script>
 </body>
 </html>

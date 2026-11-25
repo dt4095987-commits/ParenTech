@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const { webcrypto } = require('node:crypto');
 
 const validationSource = fs.readFileSync(path.resolve(__dirname, '../shared/validation.js'), 'utf8');
-const domainSource = fs.readFileSync(path.resolve(__dirname, '../frontend/domain.js'), 'utf8');
+const domainSource = fs.readFileSync(path.resolve(__dirname, '../frontend/assets/js/domain.js'), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const profile = { name: 'Server Parent', phone: '+639191234567', dob: '1990-04-20', civilStatus: 'Single', role: 'Mom', age: require('../shared/validation.js').ageFromDOB('1990-04-20'), photo: '' };
 const user = { id: 'server-user', ...profile };
@@ -201,7 +201,7 @@ test('cookie sessions and subsequent login remap server ids while retaining orga
 test('signup and profile updates send whitelisted normalized values and cache no password', async () => {
   const app = browser({ respond: request => request.url.endsWith('/session') ? response({ user: null }) : request.url.endsWith('/profile') ? response({ user: { ...user, ...request.body } }) : response({ user }) });
   await app.store.init();
-  await app.store.signup({ ...signup, phone: '0919 123 4567', name: '  Server   Parent ', unrelated: 'never-send' });
+  await app.store.signup({ ...signup, phone: '0919 123 4567', name: '  Server   Parent ', age: 'tampered', unrelated: 'never-send' });
   const signupRequest = app.requests.find(request => request.url.endsWith('/signup'));
   assert.deepEqual(signupRequest.body, signup);
   assert.ok(!app.values.get('parentech.v1').includes(signup.password));
@@ -209,9 +209,10 @@ test('signup and profile updates send whitelisted normalized values and cache no
   await app.store.updateProfile({ name: 'Updated Parent', age: 40, password: 'never-send' });
   const update = app.requests.find(request => request.url.endsWith('/profile'));
   assert.equal(update.method, 'PATCH');
-  assert.deepEqual(update.body, { name: 'Updated Parent', age: 40 });
+  assert.deepEqual(update.body, { name: 'Updated Parent' });
   assert.equal(update.headers['X-PT-Account'], user.id);
   assert.equal(app.store.getState().user.name, 'Updated Parent');
+  assert.equal(app.store.getState().user.age, app.store.getAge(profile.dob));
   assert.equal(app.store.getState().groceries[0].name, 'Apples');
 });
 
@@ -288,7 +289,7 @@ test('server profiles accept optional fields and photo-only patches retain organ
   assert.equal(reopened.store.getState().settings.theme, 'system');
 });
 
-test('partial profile edits preserve newer server age and photo values that were not edited', async () => {
+test('partial profile edits retain newer server DOB and photo and derive age from that DOB', async () => {
   let serverUser = { ...user };
   const app = browser({ respond: request => {
     if (request.url.endsWith('/profile')) serverUser = { ...serverUser, ...request.body };
@@ -296,11 +297,37 @@ test('partial profile edits preserve newer server age and photo values that were
   } });
   await app.store.init();
   const photo = 'data:image/png;base64,iVBORw0KGgo=';
-  serverUser = { ...serverUser, age: 45, photo };
+  serverUser = { ...serverUser, dob: '1988-11-24', age: 45, photo };
   await app.store.updateProfile({ name: 'Edited Name' });
   const patch = app.requests.find(request => request.url.endsWith('/profile'));
   assert.deepEqual(patch.body, { name: 'Edited Name' }); assert.equal(patch.headers['X-PT-Account'], user.id);
-  assert.equal(app.store.getState().user.photo, photo); assert.equal(app.store.getState().user.age, 45);
+  assert.equal(app.store.getState().user.photo, photo); assert.equal(app.store.getState().user.dob, serverUser.dob);
+  assert.equal(app.store.getState().user.age, app.store.getAge(serverUser.dob));
+});
+
+test('server snapshots cannot override browser birthday age and age-only edits send no age', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 10, 23, 23, 59) });
+  const photo = 'data:image/png;base64,iVBORw0KGgo=';
+  let serverUser = { ...user, dob: '2000-11-24', age: 'stale manual age', photo };
+  const app = browser({ extras: { Date }, respond: request => {
+    if (request.url.endsWith('/profile')) serverUser = { ...serverUser, ...request.body };
+    return response({ user: serverUser });
+  } });
+  await app.store.init();
+  app.store.addGrocery('Milk', 4);
+  assert.equal(app.store.getState().user.age, 25);
+  const saved = app.values.get('parentech.v1');
+  t.mock.timers.setTime(new Date(2026, 10, 24).getTime());
+  assert.equal(app.store.getState().user.age, 26);
+  assert.equal(app.values.get('parentech.v1'), saved, 'Reading the current age leaves the cached snapshot untouched');
+  await app.store.updateProfile({ age: 5 });
+  assert.deepEqual(app.requests.at(-1).body, {});
+  assert.equal(app.store.getState().user.age, 26); assert.equal(app.store.getState().user.photo, photo);
+  assert.equal(app.store.getState().groceries[0].quantity, 4);
+  serverUser = { ...serverUser, dob: '', age: 27 };
+  await app.store.init();
+  assert.equal(app.store.getState().user.age, null); assert.equal(app.store.getState().user.photo, photo);
+  assert.equal(app.store.getState().groceries[0].quantity, 4);
 });
 
 test('late profile and photo responses cannot restore a logged-out session or cross-account data', async () => {
@@ -334,10 +361,10 @@ test('profile responses are discarded after another login or logout-and-relogin 
       return response({ user });
     } });
     await app.store.init(); app.store.addGrocery('A groceries');
-    const pending = app.store.updateProfile({ age: 50 });
+    const pending = app.store.updateProfile({ name: 'Pending Parent' });
     await app.store.logout(); await app.store.login({ phone: nextUser.phone, password: signup.password });
     const before = app.values.get('parentech.v1');
-    complete(response({ user: { ...user, age: 50 } }));
+    complete(response({ user: { ...user, name: 'Pending Parent' } }));
     await assert.rejects(pending, error => error.code === 'SESSION_CHANGED');
     assert.equal(app.store.getState().user.id, nextUser.id); assert.equal(app.values.get('parentech.v1'), before);
     assert.equal(app.saved().accounts[user.id].data.groceries[0].name, 'A groceries');
@@ -349,11 +376,12 @@ test('same-user session refresh does not invalidate a pending profile or photo s
     let complete;
     const app = browser({ respond: request => request.url.endsWith('/profile') ? new Promise(resolve => { complete = resolve; }) : response({ user }) });
     await app.store.init(); app.store.addGrocery('Keep these groceries');
-    const pending = photoOnly ? app.store.updateProfilePhoto('data:image/png;base64,iVBORw0KGgo=') : app.store.updateProfile({ age: 40 });
+    const pending = photoOnly ? app.store.updateProfilePhoto('data:image/png;base64,iVBORw0KGgo=') : app.store.updateProfile({ name: 'Updated Parent' });
     await app.store.init();
-    complete(response({ user: { ...user, age: 40, photo: photoOnly ? 'data:image/png;base64,iVBORw0KGgo=' : '' } }));
+    complete(response({ user: { ...user, name: photoOnly ? user.name : 'Updated Parent', photo: photoOnly ? 'data:image/png;base64,iVBORw0KGgo=' : '' } }));
     await pending;
-    assert.equal(app.store.getState().user.age, 40); assert.equal(app.store.getState().groceries[0].name, 'Keep these groceries');
+    assert.equal(app.store.getState().user.age, app.store.getAge(profile.dob)); assert.equal(app.store.getState().groceries[0].name, 'Keep these groceries');
+    assert.equal(app.store.getState().user.name, photoOnly ? user.name : 'Updated Parent');
   }
 });
 

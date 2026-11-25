@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar - ParenTech</title>
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#7337B8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/integration.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+    <div class="app-shell">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        <aside class="app-sidebar" id="appSidebar">
+            <nav class="sidebar-nav-list">
+                <a href="home.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Home</span>
+                </a>
+                <a href="calendar.html" class="sidebar-nav-item active">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>Calendar</span>
+                </a>
+                <a href="grocery.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span>Grocery</span>
+                </a>
+                <a href="tasks.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>Tasks</span>
+                </a>
+                <a href="pills.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-capsules"></i>
+                    <span>Pill Reminders</span>
+                </a>
+                <a href="profile.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div style="height: 1px; background: var(--border-subtle); margin: 12px 16px;"></div>
+                <a href="faqs.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-circle-question"></i>
+                    <span>FAQs</span>
+                </a>
+                <a href="report-problem.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-flag"></i>
+                    <span>Report a Problem</span>
+                </a>
+                <a href="help.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-headset"></i>
+                    <span>Help & Support</span>
+                </a>
+            </nav>
+            <div class="sidebar-bottom">
+                <button type="button" class="btn-sidebar-logout" data-action="logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="app-main-content">
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <a href="home.html" class="topbar-logo">
+                        <img src="../assets/img/logo.png" alt="ParenTech Logo">
+                        <span class="topbar-brand">Paren<span class="brand-tech">Tech</span></span>
+                    </a>
+                </div>
+
+                <div class="topbar-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="topbarSearchInput" placeholder="Search events, appointments...">
+                </div>
+
+                <div class="topbar-right">
+                    <button type="button" class="icon-btn-round" data-action="toggle-theme" title="Toggle Dark/Light Mode">
+                        <i class="fa-solid fa-moon" data-theme-icon></i>
+                    </button>
+                    <button type="button" class="icon-btn-round" id="notifBtn" title="Reminders & Alarms">
+                        <i class="fa-solid fa-bell"></i>
+                        <span class="notif-badge"></span>
+                    </button>
+
+                    <div class="reminders-popup" id="remindersPopup">
+                        <div class="reminders-header">
+                            <div class="reminders-title"><i class="fa-solid fa-bell"></i> Reminders & Alarms</div>
+                            <button type="button" class="btn-modal-close" id="closeRemindersPopup" style="width:28px;height:28px;font-size:0.9rem;"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="reminders-body" id="remindersPopupBody">Loading reminders...</div>
+                    </div>
+
+                    <a href="profile.html" class="topbar-avatar" title="View Profile">
+                        <img src="../assets/img/avatar.jpg" alt="Your profile photo">
+                    </a>
+                </div>
+            </header>
+
+            <main class="app-page-body">
+                <!-- Standard Calendar View matching Prototype Image 924065377 -->
+                <div id="standardCalendarSection">
+                    <div class="page-greeting-header">
+                        <h1 class="page-greeting-title">Hello, <span id="calendarGreetingName">there</span>! <span class="heart-icon">♥</span></h1>
+                    </div>
+
+                    <div class="calendar-layout-grid">
+                        <!-- Left Column: Calendar & AI Schedule Copilot -->
+                        <div class="calendar-main-side">
+                            <!-- Left Month Calendar -->
+                            <div class="calendar-card">
+                                <div class="calendar-header-row">
+                                    <h2 class="calendar-header-title">ParenTech Calendar</h2>
+                                    <a href="#" id="calendarViewAllBtn" class="calendar-view-all-link">View all &rsaquo;</a>
+                                </div>
+                                <div class="calendar-month-nav">
+                                    <button type="button" class="icon-btn-round" data-action="calendar-prev" title="Previous month" aria-label="Previous month"><i class="fa-solid fa-chevron-left"></i></button>
+                                    <span id="calendarMonthLabel">Loading calendar...</span>
+                                    <button type="button" class="icon-btn-round" data-action="calendar-next" title="Next month" aria-label="Next month"><i class="fa-solid fa-chevron-right"></i></button>
+                                </div>
+                                <table class="calendar-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="calendarDaysGrid">
+                                        <!-- Rendered by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- ParenAI Calendar Schedule Assistant & Weekend Planner -->
+                            <div class="ai-calendar-card" id="aiCalendarCard">
+                                <div class="ai-calendar-header">
+                                    <div class="ai-calendar-header-top">
+                                        <span class="ai-badge-sm">
+                                            <i class="fa-solid fa-sparkles"></i> ParenAI Calendar
+                                        </span>
+                                        <span class="ai-calendar-health-badge" id="aiCalendarHealthBadge">
+                                            <i class="fa-solid fa-circle-check"></i> Balanced Schedule
+                                        </span>
+                                    </div>
+                                    <div class="ai-calendar-actions-top">
+                                        <button type="button" class="btn-ai-briefing-refresh" id="aiCalendarTipBtn" title="Get time management & scheduling advice">
+                                            <i class="fa-solid fa-arrows-rotate"></i>
+                                            <span>Schedule Tip</span>
+                                        </button>
+                                        <button type="button" class="btn-ai-plan-weekend" id="aiPlanWeekendBtn" title="Plan a fun family weekend with AI">
+                                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                            <span>Plan Weekend</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="ai-calendar-stats-row">
+                                    <div class="ai-calendar-stat-col">
+                                        <div class="ai-calendar-stat-num" id="aiMonthEventsCount">0</div>
+                                        <div class="ai-calendar-stat-label">Events This Month</div>
+                                    </div>
+                                    <div class="ai-calendar-stat-col">
+                                        <div class="ai-calendar-stat-num" id="aiBusiestDayLabel">None</div>
+                                        <div class="ai-calendar-stat-label" id="aiBusiestDaySub">Busiest Day</div>
+                                    </div>
+                                    <div class="ai-calendar-stat-col">
+                                        <div class="ai-calendar-stat-num" id="aiSelectedDayPill">--</div>
+                                        <div class="ai-calendar-stat-label" id="aiSelectedDaySub">Selected Date</div>
+                                    </div>
+                                </div>
+
+                                <!-- AI Dynamic Advice & Conflict Banner -->
+                                <div class="ai-calendar-advice-box" id="aiCalendarAdviceBox">
+                                    <i class="fa-solid fa-clock-rotate-left" id="aiCalendarAdviceIcon"></i>
+                                    <span id="aiCalendarAdviceText">Analyzing family schedule & commitments...</span>
+                                </div>
+
+                                <!-- Quick Family Activity Ideas -->
+                                <div class="ai-calendar-ideas-row">
+                                    <span class="ai-calendar-idea-label"><i class="fa-solid fa-lightbulb"></i> Quick Family Ideas:</span>
+                                    <div class="ai-calendar-idea-chips">
+                                        <button type="button" class="ai-calendar-idea-chip" data-idea="park" title="Add Afternoon Family Park Walk">
+                                            <i class="fa-solid fa-tree"></i> Afternoon Park Walk
+                                        </button>
+                                        <button type="button" class="ai-calendar-idea-chip" data-idea="study" title="Add Homework & Reading Hour">
+                                            <i class="fa-solid fa-book"></i> Homework / Study Hour
+                                        </button>
+                                        <button type="button" class="ai-calendar-idea-chip" data-idea="family-dinner" title="Add Family Dinner Date">
+                                            <i class="fa-solid fa-utensils"></i> Family Dinner Date
+                                        </button>
+                                        <button type="button" class="ai-calendar-idea-chip" data-idea="chores" title="Add Quick Weekend Chores">
+                                            <i class="fa-solid fa-broom"></i> Quick Weekend Chores
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Event Details -->
+                        <div class="calendar-events-side">
+                            <!-- Tasks for Date -->
+                            <div class="event-box-card">
+                                <div class="event-box-header">
+                                    <h3 class="event-box-title" id="calendarSelectedDateTitle">Tasks for selected date</h3>
+                                    <button type="button" class="btn-add-event-circle" data-action="new-task" title="Add Task">
+                                        <i class="fa-solid fa-plus"></i>
+                                    </button>
+                                </div>
+                                <div id="calendarTasksForDayList">
+                                    <div class="empty-strip-card">Loading tasks...</div>
+                                </div>
+                            </div>
+
+                            <!-- Upcoming Events -->
+                            <div class="event-box-card">
+                                <div class="event-box-header">
+                                    <h3 class="event-box-title">Upcoming Events</h3>
+                                </div>
+                                <div id="calendarUpcomingEventsList">
+                                    <div class="empty-strip-card">Loading upcoming events...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full Calendar Multi-Month Mode matching Prototype Image 925844364 -->
+                <div id="fullCalendarSection" style="display: none;">
+                    <div class="page-back-header">
+                        <button type="button" class="btn-back-round" id="backToStandardCalendarBtn">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <h1 class="page-greeting-title" style="font-size: 1.5rem; margin: 0;">Full Calendar</h1>
+                    </div>
+
+                    <div class="calendar-card" style="margin-bottom: 24px;">
+                        <div class="full-calendar-months" id="fullCalendarMonths">
+                            <div>
+                                <h3 style="text-align: center; color: var(--primary-purple); margin-bottom: 16px;">Loading calendar...</h3>
+                                <table class="calendar-table">
+                                    <thead><tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <div>
+                                <h3 style="text-align: center; color: var(--primary-purple); margin-bottom: 16px;">Loading calendar...</h3>
+                                <table class="calendar-table">
+                                    <thead><tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Selected Day Bottom Popup matching Prototype Image 925844364 -->
+                    <div class="grocery-subcard" style="text-align: center; max-width: 580px; margin: 0 auto; box-shadow: var(--shadow-lg);">
+                        <h2 id="fullCalendarSelectedDateTitle" style="font-size: 1.4rem; color: var(--text-primary); margin-bottom: 8px;">Selected date</h2>
+                        <div id="fullCalendarTasksForDayList" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 24px;">Loading tasks...</div>
+                        <button type="button" class="btn-green-pill" data-action="new-task" style="max-width: 320px; margin: 0 auto;">
+                            ADD EVENT
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Floating Action Button (+ Task) -->
+    <div class="fab-container">
+        <button type="button" class="fab-btn" id="fabAddTaskBtn" data-action="new-task" title="Create New Task">
+            <i class="fa-solid fa-plus"></i>
+        </button>
+        <span class="fab-label">Task</span>
+    </div>
+
+    <!-- New Task Modal -->
+    <div class="modal-backdrop-overlay" id="newTaskModal">
+        <div class="modal-dialog-box">
+            <div class="modal-header-row">
+                <h2 class="modal-header-title">New Task / Reminder</h2>
+                <button type="button" class="btn-modal-close" data-action="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="newTaskForm">
+                <!-- AI Smart Task Quick Fill -->
+                <div class="ai-smart-fill-banner">
+                    <div class="ai-smart-fill-header">
+                        <span class="ai-badge-sm"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Quick-Fill</span>
+                        <span class="ai-smart-fill-tip">Type naturally, AI auto-fills title, date, time & category</span>
+                    </div>
+                    <div class="ai-smart-fill-row">
+                        <input type="text" id="aiSmartTaskPrompt" class="ai-smart-prompt-input" placeholder="e.g. Lucas dentist next Tuesday at 10am">
+                        <button type="button" class="btn-ai-smart-fill" id="aiSmartFillBtn" title="Auto-fill task details with AI">
+                            <i class="fa-solid fa-bolt-lightning"></i>
+                            <span>Fill</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-field-pill">
+                    <label>Task Title</label>
+                    <div class="input-pill-wrapper">
+                        <input type="text" id="modalTaskTitle" name="title" maxlength="120" class="input-pill" placeholder="e.g., Dentist Appointment" style="padding-left: 20px;" required>
+                    </div>
+                </div>
+                <div class="form-field-pill">
+                    <div class="field-label-with-ai-action">
+                        <label>Task Description</label>
+                        <button type="button" class="btn-ai-subtask-breakdown" id="aiSubtasksBtn" title="Generate action steps with AI">
+                            <i class="fa-solid fa-list-check"></i>
+                            <span>AI Steps</span>
+                        </button>
+                    </div>
+                    <div class="input-pill-wrapper" style="border-radius: var(--radius-lg); padding: 12px 18px;">
+                        <textarea id="modalTaskDesc" name="description" maxlength="500" rows="3" style="width: 100%; border: none; background: transparent; outline: none; resize: none;" placeholder="Add more details here..."></textarea>
+                    </div>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-field-pill">
+                        <label>Date</label>
+                        <div class="input-pill-wrapper" style="cursor: pointer;" id="triggerDatePickerBtn">
+                            <input type="text" id="modalTaskDate" class="input-pill" placeholder="Choose a date" readonly style="cursor: pointer; padding-left: 20px;">
+                            <i class="fa-regular fa-calendar" style="position: absolute; right: 18px; color: var(--text-muted); font-size: 1.05rem;"></i>
+                        </div>
+                    </div>
+                    <div class="form-field-pill">
+                        <label>Time</label>
+                        <div class="input-pill-wrapper" style="cursor: pointer;" id="triggerTimePickerBtn">
+                            <input type="text" id="modalTaskTime" class="input-pill" placeholder="Choose a time" readonly style="cursor: pointer; padding-left: 20px;">
+                            <i class="fa-regular fa-clock" style="position: absolute; right: 18px; color: var(--text-muted); font-size: 1.05rem;"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-field-pill" style="margin-top: 6px;">
+                    <label>Category</label>
+                    <div class="category-picker-row">
+                        <div class="cat-picker-item active" data-category="personal">
+                            <div class="cat-picker-btn"><i class="fa-solid fa-clipboard-list"></i></div>
+                            <span class="cat-picker-label">Personal</span>
+                        </div>
+                        <div class="cat-picker-item" data-category="family">
+                            <div class="cat-picker-btn"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="cat-picker-label">Family</span>
+                        </div>
+                        <div class="cat-picker-item" data-category="household">
+                            <div class="cat-picker-btn"><i class="fa-solid fa-house"></i></div>
+                            <span class="cat-picker-label">Household</span>
+                        </div>
+                        <div class="cat-picker-item" data-category="pill">
+                            <div class="cat-picker-btn"><i class="fa-solid fa-capsules"></i></div>
+                            <span class="cat-picker-label">Pill Reminder</span>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-purple-pill">Create Task</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- AI Weekend Family Planner Modal -->
+    <div class="modal-backdrop-overlay" id="aiWeekendModal">
+        <div class="modal-dialog-box" style="max-width: 620px;">
+            <div class="modal-header-row">
+                <div>
+                    <h2 class="modal-header-title"><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary-purple);"></i> Plan Weekend with AI</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" id="aiWeekendDatesSubhead">Upcoming Weekend</p>
+                </div>
+                <button type="button" class="btn-modal-close" data-action="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <p class="ai-weekend-modal-intro">
+                Choose a tailored 2-day family weekend itinerary below. AI will automatically schedule each activity on your calendar!
+            </p>
+
+            <div class="ai-weekend-plans-list" id="aiWeekendPlansList">
+                <!-- Populated dynamically by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Picker Dialog Modal -->
+    <div class="modal-backdrop-overlay" id="datePickerDialog">
+        <div class="datepicker-dialog-box">
+            <div class="datepicker-header">
+                <div class="datepicker-year">Choose a date</div>
+                <div class="datepicker-date-str">Task date</div>
+            </div>
+            <div class="datepicker-calendar-body">
+                <div class="form-field-pill">
+                    <label for="datePickerInput">Date</label>
+                    <div class="input-pill-wrapper">
+                        <input type="date" id="datePickerInput" class="input-pill" min="1900-01-01" max="9999-12-31" style="padding-left: 20px;" required>
+                    </div>
+                </div>
+            </div>
+            <div class="datepicker-actions">
+                <button type="button" class="btn-dialog-no" data-action="close-modal">Cancel</button>
+                <button type="button" class="btn-dialog-yes" id="confirmDatePickerBtn">OK</button>
+            </div>
+        </div>
+    </div>
+    <!-- Time Picker Dialog Modal -->
+    <div class="modal-backdrop-overlay" id="timePickerDialog">
+        <div class="timepicker-dialog-box">
+            <div class="timepicker-header">
+                <div class="timepicker-digits" style="font-size: 1.5rem;">Task time</div>
+            </div>
+            <div class="timepicker-dial-body">
+                <div class="form-field-pill">
+                    <label for="timePickerInput">Time</label>
+                    <div class="input-pill-wrapper">
+                        <input type="time" id="timePickerInput" class="input-pill" style="padding-left: 20px;" required>
+                    </div>
+                </div>
+            </div>
+            <div class="datepicker-actions">
+                <button type="button" class="btn-dialog-no" data-action="close-modal">Cancel</button>
+                <button type="button" class="btn-dialog-yes" id="confirmTimePickerBtn">OK</button>
+            </div>
+        </div>
+    </div>
+    <!-- Logout Confirmation Modal -->
+    <div class="modal-backdrop-overlay" id="logoutConfirmModal">
+        <div class="logout-dialog-box">
+            <div class="logout-icon-circle"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Are you sure you want to log out?</h3>
+            <div class="logout-actions-row">
+                <button type="button" class="btn-dialog-no" data-action="close-modal">No</button>
+                <button type="button" class="btn-dialog-yes" data-action="confirm-logout">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prototype Toast -->
+    <div id="prototypeToast" class="prototype-toast">
+        <i class="fa-solid fa-circle-check"></i> <span>Event saved.</span>
+    </div>
+
+    <script src="/shared/validation.js"></script>
+    <script src="/domain.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>

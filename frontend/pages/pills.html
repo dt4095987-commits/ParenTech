@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pill Reminders - ParenTech</title>
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#7337B8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/integration.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+    <div class="app-shell">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        <aside class="app-sidebar" id="appSidebar">
+            <nav class="sidebar-nav-list">
+                <a href="home.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Home</span>
+                </a>
+                <a href="calendar.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>Calendar</span>
+                </a>
+                <a href="grocery.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span>Grocery</span>
+                </a>
+                <a href="tasks.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>Tasks</span>
+                </a>
+                <a href="pills.html" class="sidebar-nav-item active">
+                    <i class="fa-solid fa-capsules"></i>
+                    <span>Pill Reminders</span>
+                </a>
+                <a href="profile.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div style="height: 1px; background: var(--border-subtle); margin: 12px 16px;"></div>
+                <a href="faqs.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-circle-question"></i>
+                    <span>FAQs</span>
+                </a>
+                <a href="report-problem.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-flag"></i>
+                    <span>Report a Problem</span>
+                </a>
+                <a href="help.html" class="sidebar-nav-item">
+                    <i class="fa-solid fa-headset"></i>
+                    <span>Help & Support</span>
+                </a>
+            </nav>
+            <div class="sidebar-bottom">
+                <button type="button" class="btn-sidebar-logout" data-action="logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="app-main-content">
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <a href="home.html" class="topbar-logo">
+                        <img src="../assets/img/logo.png" alt="ParenTech Logo">
+                        <span class="topbar-brand">Paren<span class="brand-tech">Tech</span></span>
+                    </a>
+                </div>
+
+                <div class="topbar-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="topbarSearchInput" placeholder="Search pills and medications...">
+                </div>
+
+                <div class="topbar-right">
+                    <button type="button" class="icon-btn-round" data-action="toggle-theme" title="Toggle Dark/Light Mode">
+                        <i class="fa-solid fa-moon" data-theme-icon></i>
+                    </button>
+                    <button type="button" class="icon-btn-round" id="notifBtn" title="Reminders & Alarms">
+                        <i class="fa-solid fa-bell"></i>
+                        <span class="notif-badge"></span>
+                    </button>
+
+                    <div class="reminders-popup" id="remindersPopup">
+                        <div class="reminders-header">
+                            <div class="reminders-title"><i class="fa-solid fa-bell"></i> Reminders & Alarms</div>
+                            <button type="button" class="btn-modal-close" id="closeRemindersPopup" style="width:28px;height:28px;font-size:0.9rem;"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="reminders-body" id="remindersPopupBody">Loading reminders...</div>
+                    </div>
+
+                    <a href="profile.html" class="topbar-avatar" title="View Profile">
+                        <img src="../assets/img/avatar.jpg" alt="Your profile photo">
+                    </a>
+                </div>
+            </header>
+
+            <main class="app-page-body">
+                <div class="page-greeting-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <h1 class="page-greeting-title">Pill Reminders</h1>
+                        <p class="page-greeting-subtitle">Track your family medication schedule and intake.</p>
+                    </div>
+                    <button type="button" class="chip-btn-purple" data-action="new-pill" style="font-weight: 600; padding: 10px 22px;">
+                        <i class="fa-solid fa-plus"></i> Add Pill
+                    </button>
+                </div>
+
+                <!-- AI Family Medicine Cabinet & Overview -->
+                <div class="ai-cabinet-card" id="aiCabinetCard">
+                    <div class="ai-cabinet-header">
+                        <div class="ai-cabinet-title-group">
+                            <span class="ai-badge-sm">
+                                <i class="fa-solid fa-sparkles"></i> AI Health & Dose Assistant
+                            </span>
+                            <span class="ai-cabinet-status" id="aiPillsStatusBadge">Family Regimen</span>
+                        </div>
+                        <button type="button" class="btn-ai-briefing-refresh" id="aiPillSafetyTipBtn" title="Get pediatric & medicine safety advice">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Safety Tip</span>
+                        </button>
+                    </div>
+
+                    <div class="ai-cabinet-summary-row">
+                        <div class="ai-cabinet-stat">
+                            <div class="ai-cabinet-stat-num" id="aiActivePillsCount">0</div>
+                            <div class="ai-cabinet-stat-label">Active Medications</div>
+                        </div>
+                        <div class="ai-cabinet-stat">
+                            <div class="ai-cabinet-stat-num" id="aiNextDoseTime">--:--</div>
+                            <div class="ai-cabinet-stat-label">Next Dose Today</div>
+                        </div>
+                        <div class="ai-cabinet-action">
+                            <button type="button" class="btn-ai-pill-quickadd" data-action="new-pill">
+                                <i class="fa-solid fa-plus"></i> New Medication
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="ai-cabinet-tip-box" id="aiPillTipBox">
+                        <i class="fa-solid fa-shield-heart"></i>
+                        <span id="aiPillTipText">Safety Tip: Always measure children's liquid medicine with a calibrated oral syringe or dropper, never a household kitchen spoon!</span>
+                    </div>
+
+                    <!-- Quick Family Medication Presets -->
+                    <div class="ai-pill-presets-row">
+                        <span class="ai-pill-preset-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Common Presets:</span>
+                        <div class="ai-pill-preset-chips">
+                            <button type="button" class="ai-pill-preset-chip" data-preset="multivitamin" title="Quick-fill Daily Multivitamins">
+                                <i class="fa-solid fa-capsules"></i> Kids Multivitamin
+                            </button>
+                            <button type="button" class="ai-pill-preset-chip" data-preset="vitaminc" title="Quick-fill Vitamin C">
+                                <i class="fa-solid fa-lemon"></i> Vitamin C (500mg)
+                            </button>
+                            <button type="button" class="ai-pill-preset-chip" data-preset="paracetamol" title="Quick-fill Paracetamol">
+                                <i class="fa-solid fa-temperature-arrow-down"></i> Paracetamol
+                            </button>
+                            <button type="button" class="ai-pill-preset-chip" data-preset="probiotic" title="Quick-fill Daily Probiotic">
+                                <i class="fa-solid fa-shield-virus"></i> Daily Probiotic
+                            </button>
+                            <button type="button" class="ai-pill-preset-chip" data-preset="calcium" title="Quick-fill Calcium + D3">
+                                <i class="fa-solid fa-bone"></i> Calcium + D3
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pills List Container -->
+                <div id="pillsListContainer">
+                    <div class="empty-strip-card">Loading medication reminders...</div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Floating Action Button (+ Task) -->
+    <div class="fab-container">
+        <button type="button" class="fab-btn" id="fabAddTaskBtn" data-action="new-task" title="Create New Task">
+            <i class="fa-solid fa-plus"></i>
+        </button>
+        <span class="fab-label">Task</span>
+    </div>
+
+    <!-- New Task Modal -->
+    <div class="modal-backdrop-overlay" id="newTaskModal">
+        <div class="modal-dialog-box">
+            <div class="modal-header-row">
+                <h2 class="modal-header-title">New Task / Reminder</h2>
+                <button type="button" class="btn-modal-close" data-action="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="newTaskForm">
+                <!-- AI Smart Task Quick Fill -->
+                <div class="ai-smart-fill-banner">
+                    <div class="ai-smart-fill-header">
+                        <span class="ai-badge-sm"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Quick-Fill</span>
+                        <span class="ai-smart-fill-tip">Type naturally, AI auto-fills title, date, time & category</span>
+                    </div>
+                    <div class="ai-smart-fill-row">
+                        <input type="text" id="aiSmartTaskPrompt" class="ai-smart-prompt-input" placeholder="e.g. Lucas dentist next Tuesday at 10am">
+                        <button type="button" class="btn-ai-smart-fill" id="aiSmartFillBtn" title="Auto-fill task details with AI">
+                            <i class="fa-solid fa-bolt-lightning"></i>
+                            <span>Fill</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-field-pill">
+                    <label>Task Title</label>
+                    <div class="input-pill-wrapper">
+                        <input type="text" id="modalTaskTitle" name="title" maxlength="120" class="input-pill" placeholder="e.g., Dentist Appointment" style="padding-left: 20px;" required>
+                    </div>
+                </div>
+                <div class="form-field-pill">
+                    <div class="field-label-with-ai-action">
+                        <label>Task Description</label>
+                        <button type="button" class="btn-ai-subtask-breakdown" id="aiSubtasksBtn" title="Generate action steps with AI">
+                            <i class="fa-solid fa-list-check"></i>
+                            <span>AI Steps</span>
+                        </button>
+                    </div>
+                    <div class="input-pill-wrapper" style="border-radius: var(--radius-lg); padding: 12px 18px;">
+                        <textarea id="modalTaskDesc" name="description" maxlength="500" rows="3" style="width: 100%; border: none; background: transparent; outline: none; resize: none;" placeholder="Add more details here..."></textarea>
+                    </div>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-field-pill">
+                        <label>Date</label>
+                        <div class="input-pill-wrapper" style="cursor: pointer;" id="triggerDatePickerBtn">
+                            <input type="text" id="modalTaskDate" class="input-pill" placeholder="Choose a date" readonly style="cursor: pointer; padding-left: 20px;">
+                            <i class="fa-regular fa-calendar" style="position: absolute; right: 18px; color: var(--text-muted); font-size: 1.05rem;"></i>
+                        </div>
+                    </div>
+                    <div class="form-field-pill">
+                        <label>Time</label>
+                        <div class="input-pill-wrapper" style="cursor: pointer;" id="triggerTimePickerBtn">
+                            <input type="text" id="modalTaskTime" class="input-pill" placeholder="Choose a time" readonly style="cursor: pointer; padding-left: 20px;">
+                            <i class="fa-regular fa-clock" style="position: absolute; right: 18px; color: var(--text-muted); font-size: 1.05rem;"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-field-pill" style="margin-top: 6px;">
+                    <label>Category</label>
+                    <div class="category-picker-row">
+                        <div class="cat-picker-item active" data-category="personal">
+                            <div class="cat-picker-btn"><i class="fa-solid fa-clipboard-list"></i></div>
+                            <span class="cat-picker-label">Personal</span>
+                        </div>
+                        <div class="cat-picker-item" data-category="family">
+                            <div class="cat-picker-btn"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="cat-picker-label">Family</span>
+                        </div>
+                        <div class="cat-picker-item" data-category="household">
+                            <div class="cat-picker-btn"><i class="fa-solid fa-house"></i></div>
+                            <span class="cat-picker-label">Household</span>
+                        </div>
+                        <div class="cat-picker-item" data-category="pill">
+                            <div class="cat-picker-btn"><i class="fa-solid fa-capsules"></i></div>
+                            <span class="cat-picker-label">Pill Reminder</span>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-purple-pill">Create Task</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Pill Modal -->
+    <div class="modal-backdrop-overlay" id="addPillModal">
+        <div class="modal-dialog-box">
+            <div class="modal-header-row">
+                <h2 class="modal-header-title">Add Medication Reminder</h2>
+                <button type="button" class="btn-modal-close" data-action="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="addPillForm">
+                <!-- AI Dose & Schedule Optimizer -->
+                <div class="ai-smart-fill-banner" style="margin-bottom: 12px;">
+                    <div class="ai-smart-fill-header">
+                        <span class="ai-badge-sm"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Dose & Schedule Optimizer</span>
+                        <span class="ai-smart-fill-tip">Type medication & instructions</span>
+                    </div>
+                    <div class="ai-smart-fill-row">
+                        <input type="text" id="aiPillPromptInput" class="ai-smart-prompt-input" placeholder="e.g. Amoxicillin 500mg 3x daily after meals">
+                        <button type="button" class="btn-ai-smart-fill" id="aiPillQuickFillBtn" title="Auto-fill name, dosage and suggested time">
+                            <i class="fa-solid fa-bolt-lightning"></i>
+                            <span>Optimize</span>
+                        </button>
+                    </div>
+                    <div id="aiPillScheduleSuggestions" class="ai-pill-schedule-suggestions" hidden></div>
+                </div>
+
+                <div class="form-field-pill">
+                    <label for="pillNameInput">Medication Name</label>
+                    <div class="input-pill-wrapper">
+                        <input type="text" id="pillNameInput" name="title" maxlength="120" class="input-pill" placeholder="e.g. Multivitamins" style="padding-left: 20px;" required>
+                    </div>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-field-pill">
+                        <label for="pillDosageInput">Dosage</label>
+                        <div class="input-pill-wrapper">
+                            <input type="text" id="pillDosageInput" name="description" maxlength="500" class="input-pill" placeholder="e.g. 1 tablet / 10mg" style="padding-left: 20px;">
+                        </div>
+                    </div>
+                    <div class="form-field-pill">
+                        <label for="pillTimeInput">Time</label>
+                        <div class="input-pill-wrapper">
+                            <input type="time" id="pillTimeInput" name="time" class="input-pill" style="padding-left: 20px;" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-field-pill">
+                    <label for="pillDateInput">Date</label>
+                    <div class="input-pill-wrapper">
+                        <input type="date" id="pillDateInput" name="date" class="input-pill" style="padding-left: 20px;" required>
+                    </div>
+                </div>
+
+                <!-- Refill to Grocery Checkbox -->
+                <div class="pill-refill-sync-box">
+                    <label class="pill-refill-toggle-label" for="pillRefillSyncCheck">
+                        <input type="checkbox" id="pillRefillSyncCheck" name="refillSync" class="pill-refill-checkbox">
+                        <span class="pill-refill-custom-check"><i class="fa-solid fa-check"></i></span>
+                        <span class="pill-refill-text">
+                            <strong><i class="fa-solid fa-cart-shopping"></i> Add to Grocery / Pharmacy list for refill</strong>
+                            <small>Automatically puts this medicine into your Grocery shopping list so you remember to restock.</small>
+                        </span>
+                    </label>
+                </div>
+
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 16px;">Each reminder is scheduled once for the date and time you choose.</p>
+                <button type="submit" class="btn-purple-pill" style="margin-top: 10px;">Save Reminder</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Date Picker Dialog Modal -->
+    <div class="modal-backdrop-overlay" id="datePickerDialog">
+        <div class="datepicker-dialog-box">
+            <div class="datepicker-header">
+                <div class="datepicker-year">Choose a date</div>
+                <div class="datepicker-date-str">Task date</div>
+            </div>
+            <div class="datepicker-calendar-body">
+                <div class="form-field-pill">
+                    <label for="datePickerInput">Date</label>
+                    <div class="input-pill-wrapper">
+                        <input type="date" id="datePickerInput" class="input-pill" min="1900-01-01" max="9999-12-31" style="padding-left: 20px;" required>
+                    </div>
+                </div>
+            </div>
+            <div class="datepicker-actions">
+                <button type="button" class="btn-dialog-no" data-action="close-modal">Cancel</button>
+                <button type="button" class="btn-dialog-yes" id="confirmDatePickerBtn">OK</button>
+            </div>
+        </div>
+    </div>
+    <!-- Time Picker Dialog Modal -->
+    <div class="modal-backdrop-overlay" id="timePickerDialog">
+        <div class="timepicker-dialog-box">
+            <div class="timepicker-header">
+                <div class="timepicker-digits" style="font-size: 1.5rem;">Task time</div>
+            </div>
+            <div class="timepicker-dial-body">
+                <div class="form-field-pill">
+                    <label for="timePickerInput">Time</label>
+                    <div class="input-pill-wrapper">
+                        <input type="time" id="timePickerInput" class="input-pill" style="padding-left: 20px;" required>
+                    </div>
+                </div>
+            </div>
+            <div class="datepicker-actions">
+                <button type="button" class="btn-dialog-no" data-action="close-modal">Cancel</button>
+                <button type="button" class="btn-dialog-yes" id="confirmTimePickerBtn">OK</button>
+            </div>
+        </div>
+    </div>
+    <!-- Logout Confirmation Modal -->
+    <div class="modal-backdrop-overlay" id="logoutConfirmModal">
+        <div class="logout-dialog-box">
+            <div class="logout-icon-circle"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">Are you sure you want to log out?</h3>
+            <div class="logout-actions-row">
+                <button type="button" class="btn-dialog-no" data-action="close-modal">No</button>
+                <button type="button" class="btn-dialog-yes" data-action="confirm-logout">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prototype Toast -->
+    <div id="prototypeToast" class="prototype-toast">
+        <i class="fa-solid fa-circle-check"></i> <span>Reminder saved.</span>
+    </div>
+
+    <script src="/shared/validation.js"></script>
+    <script src="/domain.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>

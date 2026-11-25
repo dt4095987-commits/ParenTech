@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Your Account - ParenTech</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/integration.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body class="backend-loading">
+    <div class="auth-page-wrapper">
+        <div class="auth-card-split">
+            <!-- Left Branding Side matching Prototype -->
+            <div class="auth-brand-side">
+                <div class="auth-logo-badge">
+                    <img src="../assets/img/logo.png" alt="ParenTech Logo">
+                </div>
+                <h1 class="brand-title">Paren<span class="brand-tech">Tech</span></h1>
+                <p class="auth-subtitle">Create your account</p>
+            </div>
+
+            <!-- Right Form Side matching Prototype Images 921266987, 923006120, 923999597 -->
+            <div class="auth-form-side">
+                <form id="signupForm" novalidate>
+                    <!-- Full Name -->
+                    <div class="form-field-pill">
+                        <div class="input-pill-wrapper">
+                            <i class="fa-solid fa-user input-pill-icon"></i>
+                            <input type="text" id="signupFullName" name="name" class="input-pill" placeholder="Full Name" maxlength="80" autocomplete="name" aria-label="Full Name" required>
+                        </div>
+                    </div>
+
+                    <!-- Row: Mobile Phone & Date of Birth -->
+                    <div class="form-grid-2">
+                        <div class="form-field-pill">
+                            <div class="input-pill-wrapper phone-input-pill">
+                                <i class="fa-solid fa-phone input-pill-icon"></i>
+                                <span class="phone-prefix" aria-hidden="true">+63</span>
+                                <input type="tel" id="signupPhone" name="phone" class="input-pill" placeholder="9171234567" inputmode="numeric" pattern="9[0-9]{9}" autocomplete="tel-national" aria-label="Mobile Phone, Philippine country code +63" required>
+                            </div>
+                        </div>
+                        <div class="form-field-pill">
+                            <div class="input-pill-wrapper">
+                                <i class="fa-solid fa-calendar-days input-pill-icon"></i>
+                                <input type="date" id="signupDob" name="dob" class="input-pill" min="1900-01-01" autocomplete="bday" aria-label="Date of Birth, optional">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row: Civil Status & Age -->
+                    <div class="form-grid-2">
+                        <div class="form-field-pill">
+                            <div class="custom-select-wrapper" id="civilStatusSelect">
+                                <div class="input-pill-wrapper" style="cursor: pointer;">
+                                    <i class="fa-solid fa-heart input-pill-icon"></i>
+                                    <input type="text" id="signupCivilStatus" name="civilStatus" class="input-pill" placeholder="Civil Status (optional)" aria-label="Civil Status, optional" readonly style="cursor: pointer;">
+                                    <i class="fa-solid fa-chevron-down" style="position: absolute; right: 20px; color: var(--text-muted); font-size: 0.85rem;"></i>
+                                </div>
+                                <div class="custom-select-options" id="civilStatusOptions">
+                                    <div class="custom-select-option selected" data-value="">Not specified</div>
+                                    <div class="custom-select-option" data-value="Single">Single</div>
+                                    <div class="custom-select-option" data-value="Married">Married</div>
+                                    <div class="custom-select-option" data-value="Divorced">Divorced</div>
+                                    <div class="custom-select-option" data-value="Widowed">Widowed</div>
+                                    <div class="custom-select-option" data-value="Separated">Separated</div>
+                                    <div class="custom-select-option" data-value="Civil Partnership">Civil Partnership</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-field-pill">
+                            <div class="input-pill-wrapper">
+                                <i class="fa-solid fa-id-card input-pill-icon"></i>
+                                <input type="text" id="signupAge" name="age" class="input-pill" placeholder="Age: N/A" aria-label="Age calculated from date of birth" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Role Selector matching Prototype Image 921266987 -->
+                    <div class="form-field-pill">
+                        <div class="custom-select-wrapper" id="roleSelect">
+                            <div class="input-pill-wrapper" style="cursor: pointer;">
+                                <i class="fa-solid fa-user-group input-pill-icon"></i>
+                                <input type="text" id="signupRole" name="role" class="input-pill" placeholder="Choose your role" aria-label="Role" readonly style="cursor: pointer;">
+                                <i class="fa-solid fa-chevron-down" style="position: absolute; right: 20px; color: var(--text-muted); font-size: 0.85rem;"></i>
+                            </div>
+                            <div class="custom-select-options" id="roleOptions">
+                                <div class="custom-select-option" data-value="Mom">Mom</div>
+                                <div class="custom-select-option" data-value="Dad">Dad</div>
+                                <div class="custom-select-option" data-value="Solo Parent">Solo Parent</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row: Password & Confirm Password -->
+                    <div class="form-grid-2">
+                        <div class="form-field-pill">
+                            <div class="input-pill-wrapper">
+                                <i class="fa-solid fa-lock input-pill-icon"></i>
+                                <input type="password" id="signupPassword" name="password" class="input-pill" placeholder="Password" minlength="8" maxlength="128" autocomplete="new-password" aria-label="Password" aria-describedby="signupPasswordHelp" required>
+                                <button type="button" class="input-pill-btn" data-password-target="signupPassword" aria-label="Show password" aria-pressed="false">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-field-pill">
+                            <div class="input-pill-wrapper">
+                                <i class="fa-solid fa-lock input-pill-icon"></i>
+                                <input type="password" id="signupConfirmPassword" name="confirmPassword" class="input-pill" placeholder="Confirm Password" maxlength="128" autocomplete="new-password" aria-label="Confirm Password" required>
+                                <button type="button" class="input-pill-btn" data-password-target="signupConfirmPassword" aria-label="Show confirm password" aria-pressed="false">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="form-help" id="signupPasswordHelp">Use 8 to 128 characters with an uppercase letter and a number. Date of birth and civil status are optional.</p>
+                    <div class="password-strength" id="signupPasswordStrength" data-strength="empty" role="status" aria-live="polite">
+                        <span class="password-strength-bar"></span><span id="passwordStrengthText">Enter a password to see its strength.</span>
+                    </div>
+                    <p class="form-error" role="alert" hidden></p>
+
+                    <!-- Green SIGN UP Button matching prototype -->
+                    <button type="submit" class="btn-green-pill" id="signupSubmitBtn">
+                        SIGN UP
+                    </button>
+
+                    <div class="auth-bottom-link" style="text-align: center;">
+                        Already have an account? <a href="../index.html">Login</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prototype Toast -->
+    <div id="prototypeToast" class="prototype-toast">
+        <i class="fa-solid fa-circle-check"></i> <span>Account created successfully!</span>
+    </div>
+
+    <script src="/shared/validation.js"></script>
+    <script src="/domain.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/main.js"></script>
+</body>
+</html>

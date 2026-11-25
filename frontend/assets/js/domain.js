@@ -6,7 +6,10 @@
 })(typeof globalThis !== 'undefined' ? globalThis : window, function (root) {
   'use strict';
 
-  const validation = typeof module === 'object' && module.exports ? require('../shared/validation.js') : root.PTValidation;
+  const validation = typeof module === 'object' && module.exports ? (function () {
+    try { return require('../../../shared/validation.js'); }
+    catch (_) { return require('../shared/validation.js'); }
+  })() : root.PTValidation;
   if (!validation || typeof validation.assert !== 'function') throw new Error('Load validation.js before domain.js.');
 
   const STORAGE_KEY = 'parentech.v1';
@@ -49,6 +52,10 @@
   function timestamp(value) {
     return typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : null;
   }
+  function storedGroceryQuantity(value) {
+    try { return validation.normalizeGroceryQuantity(value); }
+    catch (_) { return 1; }
+  }
   function invalid(field, message) { throw new validation.ValidationError({ [field]: message }); }
   function assertId(id, label = 'item') {
     if (!validation.isValidId(id)) invalid('id', 'Choose a valid ' + label + '.');
@@ -56,7 +63,7 @@
   }
   function profileValues(values) {
     const { name, phone, dob, civilStatus, role } = values;
-    return { name, phone, dob: dob || '', civilStatus: civilStatus || '', role, age: values.age === undefined ? getAge(dob) : values.age, photo: values.photo || '' };
+    return { name, phone, dob: dob || '', civilStatus: civilStatus || '', role, age: getAge(dob), photo: values.photo || '' };
   }
   function storedProfileValues(value, id) {
     if (!value || typeof value.name !== 'string' || !value.name.trim() || value.name.trim().length > 80 || /[\u0000-\u001f\u007f-\u009f]/.test(value.name)) return null;
@@ -65,12 +72,7 @@
     return { id, ...profileValues(result.values), name: value.name.trim() };
   }
   function getAge(dob) {
-    if (!validDate(dob) || dob > localDate()) return null;
-    const [year, month, day] = dob.split('-').map(Number);
-    const today = new Date();
-    let age = today.getFullYear() - year;
-    if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
-    return age;
+    return validation.ageFromDOB(dob, localDate());
   }
   function loadDatabase() {
     let parsed;
@@ -97,8 +99,8 @@
       if (account.credentials && (!/^[a-f0-9]{32}$/.test(account.credentials.salt) || !/^[a-f0-9]{64}$/.test(account.credentials.hash))) return;
       const data = { tasks: account.data.tasks, groceries: account.data.groceries, purchases: account.data.purchases, settings: account.data.settings || { ...DEFAULT_SETTINGS }, reports: account.data.reports || [], profileViews: account.data.profileViews || [] };
       data.tasks = data.tasks.filter(item => item && validId(item.id) && typeof item.title === 'string' && item.title.trim() && item.title.length <= 120 && validDate(item.date) && /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time) && CATEGORIES.includes(item.category)).map(item => ({ id: item.id, title: item.title, description: typeof item.description === 'string' ? item.description.slice(0, 500) : '', date: item.date, time: item.time, category: item.category, completed: Boolean(item.completed), notifiedAt: timestamp(item.notifiedAt), createdAt: timestamp(item.createdAt), completedAt: timestamp(item.completedAt) }));
-      data.groceries = data.groceries.filter(item => item && validId(item.id) && typeof item.name === 'string' && item.name.trim() && item.name.length <= 100).map(item => ({ id: item.id, name: item.name }));
-      data.purchases = data.purchases.filter(item => item && validId(item.id) && typeof item.name === 'string' && item.name.trim() && item.name.length <= 100 && timestamp(item.purchasedAt)).map(item => ({ id: item.id, name: item.name, purchasedAt: item.purchasedAt }));
+      data.groceries = data.groceries.filter(item => item && validId(item.id) && typeof item.name === 'string' && item.name.trim() && item.name.length <= 100).map(item => ({ id: item.id, name: item.name, quantity: storedGroceryQuantity(item.quantity) }));
+      data.purchases = data.purchases.filter(item => item && validId(item.id) && typeof item.name === 'string' && item.name.trim() && item.name.length <= 100 && timestamp(item.purchasedAt)).map(item => ({ id: item.id, name: item.name, quantity: storedGroceryQuantity(item.quantity), purchasedAt: item.purchasedAt }));
       data.settings = { theme: data.settings.theme, notifications: data.settings.notifications };
       data.settings.theme = ['light', 'dark', 'system'].includes(data.settings.theme) ? data.settings.theme : 'light';
       data.settings.notifications = Boolean(data.settings.notifications);
@@ -130,7 +132,7 @@
     const activeId = remote && !demoActive ? authenticatedUser?.id : db.sessionId;
     const current = activeId && db.accounts[activeId];
     if (!current) return { user: null, ...emptyData(), settings: clone(db.defaultSettings) };
-    return clone({ user: current.profile, ...current.data });
+    return clone({ user: { ...current.profile, age: getAge(current.profile.dob) }, ...current.data });
   }
   function finish() { persist(); return getState(); }
   function requireServer() {
@@ -285,7 +287,7 @@
         { id: uid(), title: 'Family walk', description: 'Some fresh air and time together.', date: today, time: '18:00', category: 'family', completed: false, notifiedAt: null, createdAt: new Date().toISOString(), completedAt: null },
         { id: uid(), title: 'Take daily vitamins', description: 'Follow the instructions on your supplement.', date: tomorrow, time: '08:00', category: 'pill', completed: false, notifiedAt: null, createdAt: new Date().toISOString(), completedAt: null }
       ];
-      demoData.groceries = ['Milk', 'Bananas', 'Eggs'].map(name => ({ id: uid(), name }));
+      demoData.groceries = ['Milk', 'Bananas', 'Eggs'].map(name => ({ id: uid(), name, quantity: 1 }));
       db.accounts[DEMO_ID] = { profile: { id: DEMO_ID, name: 'Alex Morgan', phone: '+639171234567', dob: '1994-06-15', civilStatus: 'Married', role: 'Mom', age: getAge('1994-06-15'), photo: '' }, credentials: null, data: demoData };
     }
     db.sessionId = DEMO_ID;
@@ -318,7 +320,7 @@
     if (fileMode && current.profile.id !== DEMO_ID) requireServer();
     if (remote && current.profile.id !== DEMO_ID) {
       const edits = {};
-      for (const field of ['name', 'phone', 'dob', 'civilStatus', 'role', 'age', 'photo']) if (Object.prototype.hasOwnProperty.call(input, field)) edits[field] = profile[field];
+      for (const field of ['name', 'phone', 'dob', 'civilStatus', 'role', 'photo']) if (Object.prototype.hasOwnProperty.call(input, field)) edits[field] = profile[field];
       return updateServerProfile(current.profile.id, edits);
     }
     if (phoneTaken(profile.phone, current.profile.id)) invalid('phone', 'That phone number is already used by another account.');
@@ -347,9 +349,10 @@
   function toggleTask(id) { const task = findTask(id); task.completed = !task.completed; task.completedAt = task.completed ? new Date().toISOString() : null; return finish(); }
   function deleteTask(id) { findTask(id); const current = account(); current.data.tasks = current.data.tasks.filter(task => task.id !== id); return finish(); }
   function markNotified(id) { findTask(id).notifiedAt = new Date().toISOString(); return finish(); }
-  function groceryName(value, excludingId) {
+  function groceryValues(value, quantity, excludingId) {
     const current = account();
-    return validation.assert('grocery', { groceryName: value }, { groceries: current.data.groceries, excludeId: excludingId }).groceryName;
+    const values = validation.assert('grocery', { groceryName: value, quantity }, { groceries: current.data.groceries, excludeId: excludingId });
+    return { name: values.groceryName, quantity: values.quantity };
   }
   function findGrocery(id) {
     assertId(id, 'grocery item');
@@ -357,13 +360,18 @@
     if (!item) invalid('id', 'This grocery item could not be found.');
     return item;
   }
-  function addGrocery(value) { const name = groceryName(value); account().data.groceries.push({ id: uid(), name }); return finish(); }
-  function editGrocery(id, value) { const item = findGrocery(id); item.name = groceryName(value, id); return finish(); }
+  function addGrocery(value, quantity = 1) { const values = groceryValues(value, quantity); account().data.groceries.push({ id: uid(), ...values }); return finish(); }
+  function editGrocery(id, value, quantity) {
+    const item = findGrocery(id);
+    const values = groceryValues(value, quantity === undefined ? item.quantity : quantity, id);
+    Object.assign(item, values);
+    return finish();
+  }
   function deleteGrocery(id) { findGrocery(id); const current = account(); current.data.groceries = current.data.groceries.filter(item => item.id !== id); return finish(); }
   function purchaseGrocery(id) {
     const current = account();
     const item = findGrocery(id);
-    current.data.purchases.unshift({ id: uid(), name: item.name, purchasedAt: new Date().toISOString() });
+    current.data.purchases.unshift({ id: uid(), name: item.name, quantity: item.quantity, purchasedAt: new Date().toISOString() });
     current.data.groceries = current.data.groceries.filter(item => item.id !== id);
     return finish();
   }
@@ -371,7 +379,7 @@
     assertId(id, 'purchased item');
     const item = account().data.purchases.find(item => item.id === id);
     if (!item) invalid('id', 'This purchased item could not be found.');
-    return addGrocery(item.name);
+    return addGrocery(item.name, item.quantity);
   }
   function updateSettings(input) {
     const values = validation.assert('settings', input);

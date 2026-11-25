@@ -234,9 +234,53 @@ test('optional personal information and bounded photo updates persist across acc
   await store.updateProfile(profile.id, { photo, age: 27 });
   const reopened = createAccountStore({ filePath }); await reopened.init();
   const updated = await reopened.login({ phone: profile.phone, password: signup.password });
-  assert.equal(updated.photo, photo); assert.equal(updated.age, 27); assert.equal(updated.name, 'Alex');
+  assert.equal(updated.photo, photo); assert.equal(updated.age, null); assert.equal(updated.name, 'Alex');
   const before = await fs.readFile(filePath, 'utf8');
   await assert.rejects(reopened.updateProfile(profile.id, { photo: 'data:image/svg+xml;base64,PHN2Zy8+' }), error => error instanceof validation.ValidationError && Boolean(error.fields.photo));
   assert.equal(await fs.readFile(filePath, 'utf8'), before);
   assert.equal((await reopened.updateProfile(profile.id, { age: '', photo: '' })).age, null);
+});
+
+test('reads current Shanghai birthday age without rewriting saved snapshots and preserves partial profile fields', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-11-23T15:59:00Z') });
+  const { store, filePath } = await fixture(t);
+  const photo = 'data:image/png;base64,iVBORw0KGgo=';
+  const profile = await store.signup({ ...signup, dob: '2000-11-24', age: 99, photo });
+  assert.equal(profile.age, 25);
+  const saved = JSON.parse(await fs.readFile(filePath, 'utf8'));
+  const credentials = saved.accounts[0].credentials;
+  saved.accounts[0].profile.age = 'stale manual age';
+  const snapshot = JSON.stringify(saved);
+  await fs.writeFile(filePath, snapshot);
+  t.mock.timers.setTime(new Date('2026-11-23T16:00:00Z').getTime());
+  const reopened = createAccountStore({ filePath });
+  await reopened.init();
+  assert.equal((await reopened.getProfile(profile.id)).age, 26);
+  assert.equal((await reopened.login({ phone: profile.phone, password: signup.password })).age, 26);
+  assert.equal(await fs.readFile(filePath, 'utf8'), snapshot, 'Reads preserve the on-disk age snapshot');
+  const ageOnly = await reopened.updateProfile(profile.id, { age: 5 });
+  assert.equal(ageOnly.age, 26); assert.equal(ageOnly.dob, '2000-11-24'); assert.equal(ageOnly.photo, photo);
+  const renamed = await reopened.updateProfile(profile.id, { name: 'Birthday Parent' });
+  assert.equal(renamed.age, 26); assert.equal(renamed.dob, '2000-11-24'); assert.equal(renamed.photo, photo);
+  const changedDOB = await reopened.updateProfile(profile.id, { dob: '2001-11-24', age: null });
+  assert.equal(changedDOB.age, 25); assert.equal(changedDOB.name, 'Birthday Parent'); assert.equal(changedDOB.photo, photo);
+  const clearedDOB = await reopened.updateProfile(profile.id, { dob: '', age: 27 });
+  assert.equal(clearedDOB.age, null); assert.equal(clearedDOB.photo, photo);
+  assert.deepEqual(JSON.parse(await fs.readFile(filePath, 'utf8')).accounts[0].credentials, credentials);
+});
+
+test('legacy manual ages without a date of birth remain unknown through import and reopen', async t => {
+  const { store, filePath } = await fixture(t);
+  const record = legacy('missing-legacy-dob', '+639171234567');
+  delete record.profile.dob;
+  record.profile.age = 27;
+  record.profile.photo = 'data:image/png;base64,iVBORw0KGgo=';
+  const imported = await store.importLegacy([record]);
+  assert.equal(imported.imported[0].profile.age, null);
+  const snapshot = await fs.readFile(filePath, 'utf8');
+  const reopened = createAccountStore({ filePath });
+  await reopened.init();
+  const profile = await reopened.getProfile(record.id);
+  assert.equal(profile.age, null); assert.equal(profile.dob, ''); assert.equal(profile.photo, record.profile.photo);
+  assert.equal(await fs.readFile(filePath, 'utf8'), snapshot);
 });

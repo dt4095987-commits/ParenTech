@@ -6,7 +6,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : window, function () {
   'use strict';
 
-  const LIMITS = Object.freeze({ name: 80, password: 128, taskTitle: 120, description: 500, grocery: 100, email: 150, screenshotBytes: 10 * 1024 * 1024, profilePhotoBytes: 2 * 1024 * 1024, age: 150 });
+  const LIMITS = Object.freeze({ name: 80, password: 128, taskTitle: 120, description: 500, grocery: 100, groceryQuantity: 9999, email: 150, screenshotBytes: 10 * 1024 * 1024, profilePhotoBytes: 2 * 1024 * 1024, age: 150 });
   const CATEGORIES = Object.freeze(['personal', 'family', 'household', 'pill']);
   const ROLES = Object.freeze(['Mom', 'Dad', 'Solo Parent']);
   const CIVIL_STATUSES = Object.freeze(['Single', 'Married', 'Widowed', 'Divorced', 'Separated', 'Civil Partnership']);
@@ -62,6 +62,11 @@
     if (name.length > LIMITS.grocery) throw new ValidationError({ groceryName: `Grocery items must be ${LIMITS.grocery} characters or fewer.` });
     return name;
   }
+  function normalizeGroceryQuantity(value = 1) {
+    const quantity = typeof value === 'string' && !CONTROLS.test(value) && /^\d{1,4}$/.test(value.trim()) ? Number(value.trim()) : value;
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > LIMITS.groceryQuantity) throw new ValidationError({ quantity: `Enter a whole-number quantity from 1 to ${LIMITS.groceryQuantity}.` });
+    return quantity;
+  }
   function filenameError(value) {
     if (typeof value !== 'string' || !value.trim()) return 'Choose a file with a valid filename.';
     if (CONTROLS.test(value)) return 'Screenshot filenames must not contain paths or control characters.';
@@ -85,6 +90,9 @@
   function validateProfilePhoto(value) {
     if (value === undefined || value === null || value === '') return '';
     if (typeof value !== 'string') return 'Choose a valid profile photo.';
+    if (/^https:\/\/[a-z0-9.-]+\.public\.blob\.vercel-storage\.com\/[^\s<>"'`]{1,400}$/i.test(value)) {
+      return CONTROLS.test(value) ? 'Choose a valid profile photo.' : '';
+    }
     const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
     if (!match || match[2].length % 4 !== 0) return 'Choose a PNG, JPG, or WebP profile photo.';
     const base64 = match[2], padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
@@ -149,13 +157,7 @@
       else if (!isValidDate(input.dob)) fail('dob', 'Choose a valid date of birth.');
       else if (input.dob > today) fail('dob', 'Date of birth must not be in the future.');
       else values.dob = input.dob;
-      if (input.age === undefined) values.age = values.dob ? ageFromDOB(values.dob, today) : null;
-      else if (input.age === null || input.age === '') values.age = null;
-      else {
-        const age = typeof input.age === 'string' && /^\d{1,3}$/.test(input.age.trim()) ? Number(input.age.trim()) : input.age;
-        if (!Number.isInteger(age) || age < 0 || age > LIMITS.age) fail('age', 'Enter an age from 0 to 150, or leave it blank.');
-        else values.age = age;
-      }
+      values.age = ageFromDOB(values.dob, today);
       if (input.civilStatus === undefined || input.civilStatus === null || input.civilStatus === '') values.civilStatus = '';
       else enumField('civilStatus', CIVIL_STATUSES, 'a civil status');
       enumField('role', ROLES, 'Mom, Dad, or Solo Parent as your role');
@@ -209,6 +211,8 @@
           });
           if (duplicate) fail('groceryName', 'That item is already on your grocery list.');
         } catch (error) { fail('groceryName', error.message); }
+        try { values.quantity = normalizeGroceryQuantity(input.quantity); }
+        catch (error) { fail('quantity', error.message); }
         break;
       }
       case 'report': {
@@ -242,5 +246,5 @@
     if (!result.valid) throw new ValidationError(result.errors);
     return result.values;
   }
-  return Object.freeze({ LIMITS, CATEGORIES, ROLES, CIVIL_STATUSES, REPORT_CATEGORIES, ValidationError, check, assert, localDay, isValidDate, isValidId, ageFromDOB, normalizePhone, normalizeGroceryName, validateScreenshot, validateProfilePhoto });
+  return Object.freeze({ LIMITS, CATEGORIES, ROLES, CIVIL_STATUSES, REPORT_CATEGORIES, ValidationError, check, assert, localDay, isValidDate, isValidId, ageFromDOB, normalizePhone, normalizeGroceryName, normalizeGroceryQuantity, validateScreenshot, validateProfilePhoto });
 });

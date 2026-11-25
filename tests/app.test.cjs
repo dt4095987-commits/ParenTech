@@ -6,11 +6,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { webcrypto } = require('node:crypto');
-const read = file => fs.readFileSync(path.resolve(__dirname, '..', file === 'validation.js' ? 'shared' : 'frontend', file), 'utf8');
+const read = file => fs.readFileSync(path.resolve(__dirname, '..', file === 'validation.js' ? 'shared' : path.join('archive', 'legacy-frontend'), file), 'utf8');
 
 // Run the shipped renderers and delegated form handlers with small real element
 // objects. This checks input behavior and accessibility attributes, not layout.
-async function startApp(savedData, { demo = false, beforeApp, systemDark = false } = {}) {
+async function startApp(savedData, { demo = false, beforeApp, systemDark = false, initialHash = '' } = {}) {
   const documentListeners = new Map(), windowListeners = new Map();
   const storage = new Map(savedData ? [['parentech.v1', savedData]] : []);
   const errors = [], forms = [];
@@ -132,7 +132,7 @@ async function startApp(savedData, { demo = false, beforeApp, systemDark = false
     addEventListener: (type, callback) => addListener(documentListeners, type, callback)
   };
   function addListener(map, type, callback) { if (!map.has(type)) map.set(type, []); map.get(type).push(callback); }
-  let hash = '';
+  let hash = initialHash;
   const location = { search: demo ? '?demo=1' : '' };
   Object.defineProperty(location, 'hash', { get: () => hash, set: value => { hash = value && !String(value).startsWith('#') ? '#' + value : String(value); } });
   class FormData {
@@ -175,6 +175,7 @@ async function startApp(savedData, { demo = false, beforeApp, systemDark = false
     const form = new Element('form'); form.dataset.form = kind; form.elements = {};
     const host = new Element(); host.className = kind === 'grocery' ? 'grocery-form-group' : 'test-form-host'; host.append(form);
     const modalKind = nodes.get('modal-root').innerHTML.match(/data-validation="([^"]*)"/)?.[1];
+    if(kind==='modal')form.dataset.itemId=nodes.get('modal-root').innerHTML.match(/data-item-id="([^"]*)"/)?.[1];
     form.dataset.validation = validationKind ?? (kind === 'modal' ? modalKind || '' : kind);
     const error = new Element('p'); error.className = 'form-error'; error.hidden = true;
     const button = new Element('button'); button.type = 'submit';
@@ -274,7 +275,7 @@ test('original screens render and the demo remains accessible only through its q
   await app.click({ action: 'auth-switch' }); assert.match(app.html(), /data-form="signup"/); assert.match(app.html(), /Civil Partnership|Solo Parent/);
   const demo = await startApp(undefined, { demo: true });
   assert.equal(demo.store.getState().user.name, 'Alex Morgan'); assert.equal((demo.html().match(/class="nav-link /g) || []).length, 4);
-  assert.match(demo.html(), /Hello, Alex Morgan!/); assert.doesNotMatch(demo.html(), /welcome-banner|progress-ring|sidebar-help/);
+  assert.match(demo.html(), /Hello, Mom!/); assert.doesNotMatch(demo.html(), /welcome-banner|progress-ring|sidebar-help/);
 });
 
 test('main and support navigation, calendar dates and purchase history remain usable', async () => {
@@ -350,6 +351,45 @@ test('grocery validation blocks empty and duplicate items before mutation; purch
   await app.click({ action: 'purchase-grocery', id: item.id });
   const purchase = app.store.getState().purchases.find(item => item.name === 'Fresh apples'); assert.ok(purchase);
   await app.click({ action: 'restore-purchase', id: purchase.id }); assert.ok(app.store.getState().groceries.some(item => item.name === 'Fresh apples'));
+});
+
+test('grocery quantities validate and persist through editing, purchase history, re-add and reload',async()=>{
+  const app=await startApp(undefined,{demo:true});await app.navigate('grocery');
+  assert.match(app.html(),/name="quantity"[^>]*value="1"/);
+  const before=app.store.getState().groceries.length;
+  for(const quantity of ['', '0','-1','1.5','1e2','many','10000']) {
+    const invalid=await app.submit('grocery',{groceryName:'Oranges',quantity});
+    assert.ok(fieldError(invalid,'quantity'),`Missing error for ${quantity}`);
+    assert.equal(app.store.getState().groceries.length,before);
+  }
+  await app.submit('grocery',{groceryName:'Oranges',quantity:'3'});
+  const item=app.store.getState().groceries.at(-1);
+  assert.equal(item.quantity,3);assert.match(app.html(),/Qty: 3/);
+  await app.click({action:'edit-grocery',id:item.id});
+  assert.match(app.modal(),/name="quantity"[^>]*value="3"/);
+  const invalid=await app.submit('modal',{groceryName:'Renamed oranges',quantity:'0'},{},'grocery');
+  assert.ok(fieldError(invalid,'quantity'));assert.equal(app.store.getState().groceries.at(-1).name,'Oranges');
+  await app.submit('modal',{groceryName:'Oranges',quantity:'5'},{},'grocery');
+  assert.equal(app.store.getState().groceries.at(-1).quantity,5);
+  await app.click({action:'purchase-grocery',id:item.id});
+  const purchase=app.store.getState().purchases[0];assert.equal(purchase.quantity,5);
+  assert.match(app.html(),/purchase-quantity">×5/);
+  await app.click({action:'grocery-history'});assert.match(app.html(),/purchase-quantity">×5/);
+  await app.click({action:'restore-purchase',id:purchase.id});
+  const restored=app.store.getState().groceries.find(item=>item.name==='Oranges');assert.equal(restored.quantity,5);
+  const reopened=await startApp(app.storage.get('parentech.v1'));assert.equal(reopened.store.getState().groceries.find(item=>item.name==='Oranges').quantity,5);
+});
+
+test('quantity typing and paste block nonnumeric and overflowing values',async()=>{
+  const app=await startApp(undefined,{demo:true});await app.navigate('grocery');
+  const {form,fields}=app.createForm('grocery',{groceryName:'Oranges',quantity:'1'});
+  fields.quantity.setSelectionRange(0,1);
+  for(const text of ['x','-1','1.5','1e2'])assert.equal((await app.edit(form,'quantity',text)).defaultPrevented,true);
+  assert.equal(fields.quantity.value,'1');
+  await app.paste(form,'quantity','3');assert.equal(fields.quantity.value,'3');
+  fields.quantity.setSelectionRange(0,1);await app.paste(form,'quantity','1.5');assert.equal(fields.quantity.value,'3');assert.ok(fieldError({form},'quantity'));
+  fields.quantity.setSelectionRange(0,1);await app.paste(form,'quantity','10000');assert.equal(fields.quantity.value,'3');
+  fields.quantity.value='9999';fields.quantity.setSelectionRange(4,4);assert.equal((await app.edit(form,'quantity','9')).defaultPrevented,true);
 });
 
 test('task validation requires time and category, preserves state, and keeps escaped rendering and confirmation', async () => {
@@ -507,7 +547,7 @@ test('bootstrap checks the server session before showing a cached profile', asyn
     return { ...store, isRemote: true, init: async () => { initCalls++; await gate; store.logout(); return store.getState(); } };
   } });
   assert.equal(initCalls, 1);
-  assert.doesNotMatch(app.html(), /Hello, Alex Morgan!/, 'A cached profile must wait for the server session check');
+  assert.doesNotMatch(app.html(), /Hello, Mom!/, 'A cached profile must wait for the server session check');
   release(); await new Promise(resolve => setImmediate(resolve));
   assert.match(app.html(), /data-form="login"/);
 });
@@ -536,10 +576,11 @@ test('dashboard omits Quick Access and new tasks default to today and current ti
 
 test('optional signup details and live password feedback work without weakening required fields',async()=>{
   const app=await startApp();await app.click({action:'auth-switch'});
-  for(const field of ['dob','civilStatus','age']) {
+  for(const field of ['dob','civilStatus']) {
     const input=app.html().match(new RegExp(`<(?:input|select)[^>]*name="${field}"[^>]*>`))[0];
     assert.doesNotMatch(input,/required|readonly/);
   }
+  assert.match(app.html().match(/<input[^>]*name="age"[^>]*>/)[0],/readonly/);
   const result=app.createForm('signup',{name:profile.name,phone:profile.phone,role:profile.role,password:'',confirmPassword:'',dob:'',civilStatus:'',age:''});
   await app.input(result.form,'password','weak');
   assert.equal(app.nodes.get('signup-password-strength').dataset.strength,'weak');
@@ -554,8 +595,42 @@ test('optional signup details and live password feedback work without weakening 
   await app.click({action:'personal-information'});assert.match(app.modal(),/Date of birth:<\/strong> Not specified/);
   assert.match(app.modal(),/Civil status:<\/strong> Not specified/);
   await app.click({action:'edit-profile'});
-  await app.submit('modal',{...app.store.getState().user,age:'35'},{},'profile');
+  const now=new Date(),birthDate=`${now.getFullYear()-35}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const edit=app.createForm('modal',{...app.store.getState().user,age:{value:'',readOnly:true}},{},'profile');
+  await app.input(edit.form,'dob',birthDate);assert.equal(String(edit.fields.age.value),'35');
+  await app.dispatchSubmit(edit.form);
   assert.equal(app.store.getState().user.age,35);assert.match(app.html(),/Age: 35/);
+});
+
+test('Home greets the selected role and each status card opens only that category',async()=>{
+  const app=await startApp(undefined,{demo:true});
+  const titles={personal:'Personal Tasks',family:'Family Tasks',household:'Household Tasks',pill:'Pill Reminders'};
+  for(const category of Object.keys(titles))app.store.saveTask({title:`Only ${category} task`,date:relativeDay(),time:'10:00',category});
+  await app.navigate('home');assert.match(app.html(),/Hello, Mom!/);
+  app.store.updateProfile({role:'Dad'});await app.navigate('home');assert.match(app.html(),/Hello, Dad!/);
+  for(const category of Object.keys(titles)) {
+    await app.click({action:'filter-category',category});
+    assert.equal(app.location.hash,`#tasks?category=${category}`);
+    assert.ok(app.html().includes(`<h1>${titles[category]}</h1>`));
+    assert.ok(app.html().includes(`Only ${category} task`));
+    for(const other of Object.keys(titles).filter(other=>other!==category))assert.ok(!app.html().includes(`Only ${other} task`));
+    await app.click({action:'new-task'});assert.match(app.modal(),new RegExp(`name="category" value="${category}" checked`));
+    await app.click({action:'close-modal'});await app.click({route:'home'});
+  }
+  await app.click({action:'filter-category',category:'family'});
+  const restored=await startApp(app.storage.get('parentech.v1'),{initialHash:'#tasks?category=family'});
+  assert.match(restored.html(),/<h1>Family Tasks<\/h1>/);assert.match(restored.html(),/Only family task/);assert.doesNotMatch(restored.html(),/Only personal task/);
+  await restored.click({action:'task-filter',filter:'pill'});assert.equal(restored.location.hash,'#tasks?category=pill');
+  assert.match(restored.html(),/<h1>Pill Reminders<\/h1>/);
+});
+
+test('empty category views let users create a task in that category immediately',async()=>{
+  const app=await startApp();await app.submit('signup',profile);
+  await app.click({action:'filter-category',category:'household'});
+  assert.match(app.html(),/No household tasks yet/);assert.match(app.html(),/data-action="new-task"[^>]*data-category="household"/);
+  await app.click({action:'new-task'});assert.match(app.modal(),/name="category" value="household" checked/);
+  await app.submit('modal',{title:'Wash dishes',date:relativeDay(),time:'12:00',category:'household'},{},'task');
+  assert.match(app.html(),/Wash dishes/);assert.match(app.html(),/<h1>Household Tasks<\/h1>/);
 });
 
 test('recommended and entered searches select pending task dates and exclude completed tasks and groceries',async()=>{
@@ -608,7 +683,7 @@ test('System Default follows appearance changes and preserves the selected prefe
 
 test('profile photos require a preview and confirmation before changing the account avatar',async()=>{
   const app=await startApp(undefined,{demo:true});await app.navigate('profile');
-  const bytes=fs.readFileSync(path.resolve(__dirname,'../frontend/assets/logo.png'));
+  const bytes=fs.readFileSync(path.resolve(__dirname,'../archive/legacy-frontend/assets/logo.png'));
   const photo=`data:image/png;base64,${bytes.toString('base64')}`;
   const file={name:'profile.png',type:'image/png',size:bytes.length,data:photo};
   await app.click({action:'choose-photo'});assert.equal(app.nodes.get('profile-photo').clicked,true);
@@ -640,7 +715,7 @@ test('a delayed profile save preserves a newer task dialog and its draft',async(
 
 test('a delayed photo read does not replace a task dialog opened afterward',async()=>{
   const app=await startApp(undefined,{demo:true});await app.navigate('profile');
-  const bytes=fs.readFileSync(path.resolve(__dirname,'../frontend/assets/logo.png'));
+  const bytes=fs.readFileSync(path.resolve(__dirname,'../archive/legacy-frontend/assets/logo.png'));
   const file={name:'profile.png',type:'image/png',size:bytes.length,data:`data:image/png;base64,${bytes.toString('base64')}`};
   let release;const gate=new Promise(resolve=>{release=resolve;});
   app.context.FileReader=class {readAsDataURL(file) {this.result=file.data;gate.then(()=>this.onload());}};

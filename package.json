@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node backend/server.cjs",
     "test": "node --test --test-isolation=none tests/*.test.cjs",
-    "check": "node --check shared/validation.js && node --check frontend/assets/js/domain.js && node --check frontend/assets/js/main.js && node --check frontend/assets/js/auth.js && node --check backend/server.cjs && node --check backend/accounts.cjs"
+    "check": "node --check shared/validation.js && node --check frontend/assets/js/domain.js && node --check frontend/assets/js/main.js && node --check frontend/assets/js/auth.js && node --check backend/server.cjs && node --check backend/accounts.cjs && node --check backend/pg-store.cjs && node --check api/index.js"
   },
   "dependencies": {
     "pg": "^8.23.1"

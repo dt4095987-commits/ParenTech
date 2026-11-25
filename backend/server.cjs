@@ -101,6 +101,9 @@ function readJSON(req) {
     req.resume();
     return Promise.reject(new ApiError(413, 'BODY_TOO_LARGE', 'The account request is too large.'));
   }
+  if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+    return Promise.resolve(req.body);
+  }
   return new Promise((resolve, reject) => {
     let size = 0, chunks = [], settled = false;
     req.on('data', chunk => {
@@ -126,14 +129,15 @@ async function createAppHandler(options = {}) {
     databaseUrl: options.databaseUrl
   });
   await accounts.init();
-  const sessionSecret = options.sessionSecret || process.env.SESSION_SECRET || randomBytes(32).toString('hex');
+  const sessionSecret = options.sessionSecret || process.env.SESSION_SECRET || (process.env.VERCEL ? randomBytes(32).toString('hex') : '');
+  const sessions = sessionSecret ? null : new Map();
 
   function signSession(userId, exp) {
     const payload = Buffer.from(JSON.stringify({ uid: userId, exp })).toString('base64url');
     const sig = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
     return `${payload}.${sig}`;
   }
-  function verifySession(token) {
+  function verifySignedSession(token) {
     if (typeof token !== 'string' || !token.includes('.')) return null;
     const parts = token.split('.');
     if (parts.length !== 2) return null;
@@ -151,19 +155,39 @@ async function createAppHandler(options = {}) {
     }
   }
   function issueSession(req, res, userId) {
-    const token = signSession(userId, Date.now() + SESSION_MS);
+    let token;
+    if (sessionSecret) {
+      token = signSession(userId, Date.now() + SESSION_MS);
+    } else {
+      const existing = sessionToken(req);
+      if (/^[a-f0-9]{64}$/.test(existing)) sessions.delete(existing);
+      const now = Date.now();
+      for (const [key, value] of sessions) if (value.expires <= now) sessions.delete(key);
+      if (sessions.size >= 1000) sessions.delete(sessions.keys().next().value);
+      token = randomBytes(32).toString('hex');
+      sessions.set(token, { userId, expires: now + SESSION_MS });
+    }
     res.setHeader('Set-Cookie', `pt_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_MS / 1000}${isSecureRequest(req) ? '; Secure' : ''}`);
   }
   async function currentUser(req, res) {
     const raw = sessionToken(req);
-    const session = verifySession(raw);
-    if (!session) {
+    let userId = null;
+    if (sessionSecret) {
+      const signed = verifySignedSession(raw);
+      userId = signed ? signed.uid : null;
+    } else if (/^[a-f0-9]{64}$/.test(raw)) {
+      const entry = sessions.get(raw);
+      if (entry && entry.expires > Date.now()) userId = entry.userId;
+      else sessions.delete(raw);
+    }
+    if (!userId) {
       if (raw) clearCookie(req, res);
       return null;
     }
-    try { return await accounts.getProfile(session.uid); }
+    try { return await accounts.getProfile(userId); }
     catch (error) {
       if (error.code !== 'ACCOUNT_NOT_FOUND') throw error;
+      if (sessions) sessions.delete(raw);
       clearCookie(req, res); return null;
     }
   }
@@ -202,7 +226,7 @@ async function createAppHandler(options = {}) {
       return;
     }
     if (requestPath === '/api/accounts/logout') {
-      req.resume(); clearCookie(req, res); sendJSON(res, 200, { user: null }); return;
+      req.resume(); if (sessions) sessions.delete(sessionToken(req)); clearCookie(req, res); sendJSON(res, 200, { user: null }); return;
     }
     if (requestPath === '/api/organizer/state') {
       const user = await currentUser(req, res);

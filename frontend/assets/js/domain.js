@@ -22,6 +22,7 @@
   const remote = typeof root.fetch === 'function' && ['http:', 'https:'].includes(browserProtocol);
   const fileMode = browserProtocol === 'file:';
   let authenticatedUser = null, demoActive = false, initPromise = null, migrationWarning = '', authVersion = 0;
+  let cloudSync = false, syncTimer = null, cloudHydrated = false;
   let authController = null;
   let storage = null;
   let persistent = false;
@@ -134,7 +135,28 @@
     if (!current) return { user: null, ...emptyData(), settings: clone(db.defaultSettings) };
     return clone({ user: { ...current.profile, age: getAge(current.profile.dob) }, ...current.data });
   }
-  function finish() { persist(); return getState(); }
+  function syncOrganizerToCloud() {
+    if (!remote || demoActive || !cloudSync || !authenticatedUser || !db.sessionId || authenticatedUser.id !== db.sessionId) return;
+    if (typeof root.fetch !== 'function') return;
+    const targetId = authenticatedUser.id;
+    const payload = clone(db.accounts[targetId]?.data || emptyData());
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+      syncTimer = null;
+      if (!cloudSync || demoActive || authenticatedUser?.id !== targetId) return;
+      root.fetch('/api/organizer/state', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-PT-Account': targetId },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    }, 120);
+  }
+  function finish(options = {}) {
+    persist();
+    if (!options.skipCloudSync) syncOrganizerToCloud();
+    return getState();
+  }
   function requireServer() {
     const error = new Error('Start ParenTech with npm start and open http://localhost:5173 to use saved accounts.');
     error.code = 'SERVER_REQUIRED';
@@ -183,7 +205,7 @@
     result.profileViews = [...new Set([...(result.profileViews || []), ...(additional.profileViews || [])])];
     return result;
   }
-  function cacheServerUser(value, sessionChange = true) {
+  function cacheServerUser(value, sessionChange = true, cloudOptions = null) {
     const user = publicProfile(value);
     const previous = db.accounts[user.id];
     const matches = Object.values(db.accounts).filter(item => item.profile.id !== DEMO_ID && item.profile.id !== user.id && (item.profile.phone === user.phone || item.serverId === user.id));
@@ -192,10 +214,34 @@
     for (const match of matches) if (!previous || match.serverId !== user.id) data = mergeData(data, match.data);
     // Keep legacy profiles and organizer records; the server id becomes the active data key.
     for (const match of matches) match.serverId = user.id;
+
+    let shouldPushLocal = false;
+    if (cloudOptions && Object.prototype.hasOwnProperty.call(cloudOptions, 'sync')) {
+      cloudSync = Boolean(cloudOptions.sync);
+      const srv = cloudOptions.data;
+      if (cloudSync && srv && typeof srv === 'object') {
+        const hasCloudItems = Boolean(srv.tasks?.length || srv.groceries?.length || srv.purchases?.length || srv.profileViews?.length);
+        const hasLocalItems = Boolean(data.tasks?.length || data.groceries?.length || data.purchases?.length || data.profileViews?.length);
+        if (hasCloudItems || !hasLocalItems) {
+          data = {
+            tasks: Array.isArray(srv.tasks) ? clone(srv.tasks) : [],
+            groceries: Array.isArray(srv.groceries) ? clone(srv.groceries) : [],
+            purchases: Array.isArray(srv.purchases) ? clone(srv.purchases) : [],
+            settings: srv.settings && typeof srv.settings === 'object' ? { theme: srv.settings.theme || 'light', notifications: Boolean(srv.settings.notifications) } : { ...DEFAULT_SETTINGS },
+            reports: data.reports || [],
+            profileViews: Array.isArray(srv.profileViews) ? [...srv.profileViews] : []
+          };
+        } else if (hasLocalItems) {
+          shouldPushLocal = true;
+        }
+        cloudHydrated = true;
+      }
+    }
+
     db.accounts[user.id] = { profile: user, credentials: previous?.credentials || null, data };
     if (sessionChange) authVersion++;
     authenticatedUser = user; demoActive = false; db.sessionId = user.id;
-    return finish();
+    return finish({ skipCloudSync: !shouldPushLocal });
   }
   async function migrateLegacyAccounts() {
     const records = Object.values(db.accounts).filter(item => item.profile.id !== DEMO_ID && item.credentials).map(item => ({ id: item.profile.id, profile: profileValues(item.profile), credentials: { ...item.credentials } }));
@@ -225,8 +271,8 @@
       if (version !== authVersion) return getState();
       const result = await request('session');
       if (version !== authVersion) return getState();
-      if (result?.user === null) { if (authenticatedUser || demoActive || db.sessionId !== null) authVersion++; authenticatedUser = null; demoActive = false; db.sessionId = null; return finish(); }
-      return cacheServerUser(result?.user, demoActive || authenticatedUser?.id !== result?.user?.id);
+      if (result?.user === null) { if (authenticatedUser || demoActive || db.sessionId !== null) authVersion++; authenticatedUser = null; demoActive = false; cloudSync = false; cloudHydrated = false; if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; } db.sessionId = null; return finish({ skipCloudSync: true }); }
+      return cacheServerUser(result?.user, demoActive || authenticatedUser?.id !== result?.user?.id, { sync: Boolean(result?.organizerSync), data: result?.organizerData });
     })();
     try { return await initPromise; } finally { initPromise = null; }
   }
@@ -276,6 +322,8 @@
   }
   function demo() {
     authVersion++;
+    if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
+    cloudSync = false; cloudHydrated = false;
     if (!db.accounts[DEMO_ID]) {
       const today = localDate();
       const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
@@ -307,6 +355,8 @@
   }
   function clearSession() {
     authVersion++;
+    if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
+    cloudSync = false; cloudHydrated = false;
     const current = db.sessionId && db.accounts[db.sessionId];
     if (current) db.defaultSettings.theme = current.data.settings.theme;
     db.sessionId = null;
@@ -422,7 +472,7 @@
     try {
       const result = await request(path, 'POST', values, undefined, intent.controller?.signal);
       if (intent.version !== authVersion) throw changedSession();
-      return cacheServerUser(result?.user);
+      return cacheServerUser(result?.user, true, { sync: Boolean(result?.organizerSync), data: result?.organizerData });
     } finally { finishAuthIntent(intent); }
   }
   function updateServerProfile(expectedId, edits) {
@@ -452,7 +502,7 @@
   }
   function getStorageStatus() {
     const accountMode = remote ? 'server' : fileMode ? 'file' : 'offline';
-    const message = remote ? 'Accounts are saved in the local JSON file. ' + (persistent ? 'Organizer data is saved in this browser.' : 'Organizer changes last for this session only.') : fileMode ? 'Start the local server to use saved accounts. Organizer data stays in this browser.' : persistent ? 'Your changes are saved in this browser.' : 'Browser storage is unavailable. Changes will last for this session only.';
+    const message = cloudSync ? 'Accounts and organizer data are synced securely to the cloud database.' : remote ? 'Accounts are saved in the local JSON file. ' + (persistent ? 'Organizer data is saved in this browser.' : 'Organizer changes last for this session only.') : fileMode ? 'Start the local server to use saved accounts. Organizer data stays in this browser.' : persistent ? 'Your changes are saved in this browser.' : 'Browser storage is unavailable. Changes will last for this session only.';
     return { persistent, accountMode, message, migrationWarning };
   }
   function reloadFromStorage() {

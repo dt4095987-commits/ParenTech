@@ -18,6 +18,7 @@ function rowToAccount(row) {
   return {
     id: row.id,
     profile: {
+      id: row.id,
       name: row.name,
       phone: row.phone,
       dob: row.dob || '',

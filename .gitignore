@@ -2,3 +2,8 @@ backend/data/accounts.json
 backend/data/*.tmp
 tmp/
 archive/tmp/
+node_modules/
+.env
+.env.*
+!.env.example
+.vercel/

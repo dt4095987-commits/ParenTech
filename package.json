@@ -1,0 +1,11 @@
+{
+  "name": "parentech",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A family organizer based on the ParenTech user guide, built with HTML, CSS, JavaScript and a local Node.js JSON account server",
+  "scripts": {
+    "start": "node backend/server.cjs",
+    "test": "node --test --test-isolation=none tests/*.test.cjs",
+    "check": "node --check shared/validation.js && node --check frontend/app.js && node --check frontend/domain.js && node --check backend/server.cjs && node --check backend/accounts.cjs"
+  }
+}

@@ -1,0 +1,91 @@
+/* Validation feedback keeps the original form shapes and spacing. */
+:root {
+  --validation-error: #a1243a;
+  --validation-error-ring: rgba(161, 36, 58, .15);
+}
+body[data-theme='dark'] {
+  --validation-error: #f0a0b2;
+  --validation-error-ring: rgba(240, 160, 178, .18);
+}
+.field-error {
+  margin: 0;
+  color: var(--validation-error);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.field-error:empty, .field-error[hidden] { display: none; }
+body[data-theme] .field input[aria-invalid='true'],
+body[data-theme] .field select[aria-invalid='true'],
+body[data-theme] .field textarea[aria-invalid='true'] {
+  border-color: var(--validation-error);
+  box-shadow: 0 0 0 2px var(--validation-error-ring);
+}
+body[data-theme] .field input[aria-invalid='true']:focus-visible,
+body[data-theme] .field select[aria-invalid='true']:focus-visible,
+body[data-theme] .field textarea[aria-invalid='true']:focus-visible {
+  outline-color: var(--validation-error);
+}
+.grocery-form:has([aria-invalid='true']),
+.upload-field:has([aria-invalid='true']) {
+  outline: 2px solid var(--validation-error);
+  outline-offset: 2px;
+}
+.grocery-field-error { margin: -8px 0 16px; }
+.auth-screen .field > .field-error,
+.profile-modal .field > .field-error { margin-top: 6px; }
+.category-picker:has(input[aria-invalid='true']) .category-icon {
+  border-color: var(--validation-error);
+}
+.form-error { color: var(--validation-error); }
+body[data-theme='dark'] .form-error { background: #412330; }
+.is-submitting [type='submit'] { cursor: progress; }
+.is-submitting [type='submit']:disabled { opacity: .65; }
+
+/* The editable number starts after the fixed country code in the original pill. */
+.phone-control { --phone-prefix-left: 60px; --phone-prefix-size: 14px; }
+.phone-prefix {
+  position: absolute;
+  left: var(--phone-prefix-left);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--phone-prefix-size);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+.field[data-field='phone'] .phone-control > input {
+  padding-left: calc(var(--phone-prefix-left) + 3ch + 6px);
+}
+.login .phone-control { --phone-prefix-left: 92px; --phone-prefix-size: 24px; }
+.signup .phone-control { --phone-prefix-left: 54px; }
+.signup .phone-prefix { font-family: ReferenceForm, 'PDF Inter', Arial, sans-serif; font-weight: 500; }
+.profile-modal .phone-control { --phone-prefix-size: 18px; }
+@media (max-width: 1100px) {
+  .signup .phone-control { --phone-prefix-left: 43px; --phone-prefix-size: 12px; }
+}
+@media (max-width: 700px) {
+  .login .phone-control { --phone-prefix-left: 76px; --phone-prefix-size: 20px; }
+  .signup .phone-control { --phone-prefix-size: 14px; }
+  .profile-modal .phone-control { --phone-prefix-size: 16px; }
+}
+@media (max-width: 430px) {
+  .login .phone-control { --phone-prefix-left: 66px; --phone-prefix-size: 18px; }
+  .signup .phone-control { --phone-prefix-left: 37px; --phone-prefix-size: 13px; }
+  .profile-modal .phone-control { --phone-prefix-left: 44px; --phone-prefix-size: 15px; }
+}
+
+/* Password feedback supplements the field errors without changing the form. */
+.password-strength { display: grid; gap: 6px; margin-top: -4px; }
+.password-strength-bar { position: relative; display: block; height: 6px; border-radius: 8px; background: var(--border); overflow: hidden; }
+.password-strength-bar::after { content: ''; display: block; width: 0; height: 100%; border-radius: inherit; background: var(--purple); transition: width .15s ease; }
+.password-strength[data-strength='weak'] .password-strength-bar::after { width: 33%; background: var(--validation-error); }
+.password-strength[data-strength='good'] .password-strength-bar::after { width: 66%; }
+.password-strength[data-strength='strong'] .password-strength-bar::after { width: 100%; background: var(--green); }
+#password-strength-text { color: var(--muted); font-size: 13px; line-height: 20px; }
+.password-strength[data-strength='weak'] #password-strength-text { color: var(--validation-error); }
+.password-strength[data-strength='good'] #password-strength-text { color: var(--purple); }
+.password-strength[data-strength='strong'] #password-strength-text { color: var(--purple); }
+@media (prefers-reduced-motion: reduce) { .password-strength-bar::after { transition: none; } }

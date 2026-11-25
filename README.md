@@ -62,7 +62,7 @@ The server does not publish the workspace directory, backend code or data, Git m
 | PATCH | `/api/accounts/profile` | Update the signed-in profile or photo with its ID in `X-PT-Account`. |
 | POST | `/api/accounts/import` | Migrate older account hashes without signing in or replacing an existing phone. |
 
-Account writes accept JSON and return structured `{ code, message, fields }` errors. Validation returns HTTP 422, duplicate phones 409, and incorrect credentials 401. Requests are limited to 3 MiB and the local app's origin. Responses contain no password hashes. See [VALIDATION.md](VALIDATION.md) for field limits and normalization.
+Account writes accept JSON and return structured `{ code, message, fields }` errors. Validation returns HTTP 422, duplicate phones 409, and incorrect credentials 401. Requests are limited to 3 MiB and the local app's origin. Responses contain no password hashes. See [docs/VALIDATION.md](docs/VALIDATION.md) for field limits and normalization.
 
 ## Checks
 
@@ -85,15 +85,22 @@ ParenTech/
       js/
       img/
   backend/
-    server.cjs          Local HTTP server, public routes, and account sessions
-    accounts.cjs        JSON persistence and credential verification
+    server.cjs          HTTP server, routes, and session handling
+    accounts.cjs        JSON persistence, credential verification & cloud routing
+    pg-store.cjs        Serverless Postgres store for Vercel deployment
     data/accounts.json  Private local account file
+  api/index.js          Vercel Serverless Function entrypoint
   shared/validation.js  Browser and server validation rules
+  docs/                 Guides, validation docs, test plans, and PDF screenshots
+    VALIDATION.md
+    VERCEL_DEPLOY.md
+    test-plans/
+    screenshots/
   archive/              Archived references, PDFs, and legacy prototype
     legacy-frontend/
   tests/
   package.json
-  VALIDATION.md
+  vercel.json
 ```
 
 `npm start` runs `backend/server.cjs`. New frontend URLs are rooted at `http://localhost:5173`; the frontend uses the same `/api/accounts/*` endpoints as the preserved interface.

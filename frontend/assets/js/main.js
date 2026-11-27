@@ -505,9 +505,9 @@
                     if (parsed.title) byId('modalTaskTitle').value = parsed.title;
                     if (parsed.date) byId('modalTaskDate').value = parsed.date;
                     if (parsed.time) this.setTaskModalTime(parsed.time);
-                    if (parsed.category) {
+                    if (parsed.predictedCategory) {
                         document.querySelectorAll('.cat-picker-item').forEach(item => {
-                            item.classList.toggle('active', item.dataset.category === parsed.category);
+                            item.classList.toggle('active', item.dataset.category === parsed.predictedCategory);
                         });
                     }
                     this.showToast('✨ AI auto-filled your task details!');
@@ -821,10 +821,23 @@
         },
         aiParseNaturalTask(prompt = '') {
             let raw = prompt.trim();
-            if (!raw) return { title: '', date: dayKey(), time: nowTime(), category: 'personal' };
+            if (!raw) return { title: '', date: dayKey(), time: nowTime(), category: 'personal', predictedCategory: null };
             raw = raw.replace(/^(?:please\s+)?(?:remind\s+me\s+(?:to\s+)?|remember\s+to\s+|don'?t\s+forget\s+to\s+|(?:add|create|schedule|set)\s+(?:a\s+)?(?:new\s+)?(?:task|reminder|event|appointment)\s*(?:to|for|:)?\s+)/i, '').trim() || raw;
 
-            const category = this.aiPredictCategory(raw) || 'personal';
+            const SEP = '\u0000';
+            let explicitCategory = null;
+            const stripCategoryTag = (source, regex) => source.replace(regex, (...args) => {
+                if (args[1]) explicitCategory = 'pill';
+                else if (args[2]) explicitCategory = 'personal';
+                else if (args[3]) explicitCategory = 'family';
+                else if (args[4]) explicitCategory = 'household';
+                return SEP;
+            });
+            raw = stripCategoryTag(raw, /(?:[,;|–—-]\s*|\(\s*|\b(?:category|cat)\s*:\s*|\b(?:under|in)\s+)(?:(pill(?:\s+reminders?)?|medicine\s+reminders?)|(personal(?:\s+tasks?)?)|(family(?:\s+tasks?)?)|(household(?:\s+tasks?)?))\s*\)?(?=$|\s*[,;|–—-])/gi);
+            raw = stripCategoryTag(raw, /^\s*(?:(?:category|cat)\s*:\s*)?(?:(pill(?:\s+reminders?)?)|(personal(?:\s+tasks?)?)|(family(?:\s+tasks?)?)|(household(?:\s+tasks?)?))\s*[,;|–—:-]\s*/i);
+
+            const predictedCategory = explicitCategory || this.aiPredictCategory(raw);
+            const category = predictedCategory || 'personal';
 
             let time = '';
             const timeMatch = raw.match(/\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i);
@@ -835,30 +848,30 @@
                 if (meridian === 'pm' && h < 12) h += 12;
                 if (meridian === 'am' && h === 12) h = 0;
                 time = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-                raw = raw.replace(timeMatch[0], ' ');
+                raw = raw.replace(timeMatch[0], SEP);
             } else {
                 const milMatch = raw.match(/\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/i);
                 if (milMatch) {
                     time = String(parseInt(milMatch[1], 10)).padStart(2, '0') + ':' + String(milMatch[2]).padStart(2, '0');
-                    raw = raw.replace(milMatch[0], ' ');
+                    raw = raw.replace(milMatch[0], SEP);
                 } else if (/\btonight\b/i.test(raw)) {
                     time = '19:00';
-                    raw = raw.replace(/\btonight\b/i, ' ');
+                    raw = raw.replace(/\btonight\b/i, SEP);
                 } else if (/\bmorning\b/i.test(raw)) {
                     time = '09:00';
-                    raw = raw.replace(/\b(?:in the\s+)?morning\b/i, ' ');
+                    raw = raw.replace(/\b(?:in the\s+)?morning\b/i, SEP);
                 } else if (/\bnoon\b/i.test(raw)) {
                     time = '12:00';
-                    raw = raw.replace(/\b(?:at\s+)?noon\b/i, ' ');
+                    raw = raw.replace(/\b(?:at\s+)?noon\b/i, SEP);
                 } else if (/\bafternoon\b/i.test(raw)) {
                     time = '14:00';
-                    raw = raw.replace(/\b(?:in the\s+)?afternoon\b/i, ' ');
+                    raw = raw.replace(/\b(?:in the\s+)?afternoon\b/i, SEP);
                 } else if (/\bevening\b/i.test(raw)) {
                     time = '18:00';
-                    raw = raw.replace(/\b(?:in the\s+)?evening\b/i, ' ');
+                    raw = raw.replace(/\b(?:in the\s+)?evening\b/i, SEP);
                 } else if (/\bnight\b/i.test(raw)) {
                     time = '20:00';
-                    raw = raw.replace(/\b(?:at\s+)?night\b/i, ' ');
+                    raw = raw.replace(/\b(?:at\s+)?night\b/i, SEP);
                 }
             }
             if (!time) time = nowTime();
@@ -888,38 +901,38 @@
 
             if (mdyMatch) {
                 const candidate = resolveMonthDay(months[mdyMatch[1].toLowerCase()], Number(mdyMatch[2]), mdyMatch[3] ? Number(mdyMatch[3]) : null);
-                if (candidate) { date = candidate; raw = raw.replace(mdyMatch[0], ' '); }
+                if (candidate) { date = candidate; raw = raw.replace(mdyMatch[0], SEP); }
             } else if (dmyMatch) {
                 const candidate = resolveMonthDay(months[dmyMatch[2].toLowerCase()], Number(dmyMatch[1]), dmyMatch[3] ? Number(dmyMatch[3]) : null);
-                if (candidate) { date = candidate; raw = raw.replace(dmyMatch[0], ' '); }
+                if (candidate) { date = candidate; raw = raw.replace(dmyMatch[0], SEP); }
             } else if (isoMatch) {
                 const candidate = formatCandidate(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3]));
-                if (candidate) { date = candidate; raw = raw.replace(isoMatch[0], ' '); }
+                if (candidate) { date = candidate; raw = raw.replace(isoMatch[0], SEP); }
             } else if (slashMatch) {
                 let first = Number(slashMatch[1]), second = Number(slashMatch[2]);
                 if (first > 12 && second <= 12) [first, second] = [second, first];
                 const candidate = resolveMonthDay(first, second, slashMatch[3] ? Number(slashMatch[3]) : null);
-                if (candidate) { date = candidate; raw = raw.replace(slashMatch[0], ' '); }
+                if (candidate) { date = candidate; raw = raw.replace(slashMatch[0], SEP); }
             }
 
             if (!date && /\bday after tomorrow\b/i.test(raw)) {
                 date = dayKey(new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000));
-                raw = raw.replace(/\b(?:the\s+)?day after tomorrow\b/i, ' ');
+                raw = raw.replace(/\b(?:the\s+)?day after tomorrow\b/i, SEP);
             } else if (!date && /\btomorrow\b/i.test(raw)) {
                 date = dayKey(new Date(today.getTime() + 24 * 60 * 60 * 1000));
-                raw = raw.replace(/\btomorrow\b/i, ' ');
+                raw = raw.replace(/\btomorrow\b/i, SEP);
             } else if (!date && /\btoday\b/i.test(raw)) {
                 date = dayKey(today);
-                raw = raw.replace(/\btoday\b/i, ' ');
+                raw = raw.replace(/\btoday\b/i, SEP);
             } else if (!date) {
                 const relMatch = raw.match(/\bin\s+(\d{1,3})\s+(days?|weeks?)\b/i);
                 if (relMatch) {
                     const mult = /^week/i.test(relMatch[2]) ? 7 : 1;
                     date = dayKey(new Date(today.getTime() + Number(relMatch[1]) * mult * 24 * 60 * 60 * 1000));
-                    raw = raw.replace(relMatch[0], ' ');
+                    raw = raw.replace(relMatch[0], SEP);
                 } else if (/\bnext\s+week\b/i.test(raw)) {
                     date = dayKey(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000));
-                    raw = raw.replace(/\bnext\s+week\b/i, ' ');
+                    raw = raw.replace(/\bnext\s+week\b/i, SEP);
                 } else {
                     const dayMatch = raw.match(/\b(?:next|this|on)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
                     if (dayMatch) {
@@ -931,7 +944,7 @@
                             if (diff === 0 || /\bnext\s+/i.test(dayMatch[0])) diff = diff === 0 ? 7 : diff + 7;
                             const targetDate = new Date(today.getTime() + diff * 24 * 60 * 60 * 1000);
                             date = dayKey(targetDate);
-                            raw = raw.replace(dayMatch[0], ' ');
+                            raw = raw.replace(dayMatch[0], SEP);
                         }
                     }
                 }
@@ -939,14 +952,20 @@
             if (!date) date = dayKey();
 
             let title = raw
+                .replace(/(?:\s*[,;|–—-]*\s*\u0000)+/g, SEP)
+                .replace(/^\u0000[\s,.;:|–—-]*|[\s,.;:|–—-]*\u0000$/g, '')
+                .replace(/\s*,\s*\u0000\s*,\s*/g, ', ')
+                .replace(/\s*\u0000\s*/g, ' ')
                 .replace(/\b(?:next|this|on|at|for|by|every)\b/gi, ' ')
                 .replace(/\s+/g, ' ')
-                .replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '')
+                .replace(/\s+([,.;:!?])/g, '$1')
+                .replace(/,\s*,+/g, ',')
+                .replace(/^[\s,.;:|–—-]+|[\s,.;:|–—-]+$/g, '')
                 .trim();
             if (title.length < 2) title = prompt.trim();
             title = title.charAt(0).toUpperCase() + title.slice(1);
 
-            return { title, date, time, category };
+            return { title, date, time, category, predictedCategory };
         },
         aiGenerateSubtasks(taskTitle = '') {
             const t = taskTitle.toLowerCase();

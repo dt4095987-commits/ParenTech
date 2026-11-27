@@ -271,11 +271,18 @@ test('task forms use the selected category and current date, and completion upda
   assert.equal(web.document.querySelector('.cat-picker-item.active').dataset.category, 'family');
   assert.equal(web.byId('modalTaskDate').value, validation.localDay());
   assert.match(web.byId('modalTaskTime').value, /^(1[0-2]|[1-9]):[0-5]\d (AM|PM)$/);
+  web.byId('aiSmartTaskPrompt').value = 'MLBB event dec 12, 2026, 4pm, pill reminder';
+  await web.fire(web.byId('aiSmartFillBtn'), 'click');
+  assert.equal(web.byId('modalTaskTitle').value, 'MLBB event');
+  assert.equal(web.byId('modalTaskDate').value, '2026-12-12');
+  assert.equal(web.byId('modalTaskTime').value, '4:00 PM');
+  assert.equal(web.document.querySelector('.cat-picker-item.active').dataset.category, 'pill');
   web.byId('aiSmartTaskPrompt').value = 'MLBB, event dec 12, 2026 at 4pm';
   await web.fire(web.byId('aiSmartFillBtn'), 'click');
   assert.equal(web.byId('modalTaskTitle').value, 'MLBB, event');
   assert.equal(web.byId('modalTaskDate').value, '2026-12-12');
   assert.equal(web.byId('modalTaskTime').value, '4:00 PM');
+  assert.equal(web.document.querySelector('.cat-picker-item.active').dataset.category, 'pill');
   web.byId('aiSmartTaskPrompt').value = 'School program 15 Jan 2027 9am';
   await web.fire(web.byId('aiSmartFillBtn'), 'click');
   assert.equal(web.byId('modalTaskDate').value, '2027-01-15');

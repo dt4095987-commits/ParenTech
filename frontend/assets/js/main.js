@@ -441,12 +441,12 @@
             const ttp = byId('triggerTimePickerBtn');
             if (ttp && !ttp.dataset.bound) {
                 ttp.dataset.bound = 'true';
-                ttp.addEventListener('click',()=>{if(byId('timePickerInput'))byId('timePickerInput').value=byId('modalTaskTime').value;byId('timePickerDialog')?.classList.add('active');});
+                ttp.addEventListener('click',()=>{if(byId('timePickerInput'))byId('timePickerInput').value=this.getTaskModalTime()||nowTime();byId('timePickerDialog')?.classList.add('active');});
             }
             const ctp = byId('confirmTimePickerBtn');
             if (ctp && !ctp.dataset.bound) {
                 ctp.dataset.bound = 'true';
-                ctp.addEventListener('click',()=>{const value=byId('timePickerInput')?.value;if(/^([01]\d|2[0-3]):[0-5]\d$/.test(value)){byId('modalTaskTime').value=value;byId('timePickerDialog').classList.remove('active');}else this.showToast('Choose a valid time.');});
+                ctp.addEventListener('click',()=>{const value=byId('timePickerInput')?.value;if(/^([01]\d|2[0-3]):[0-5]\d$/.test(value)){this.setTaskModalTime(value);byId('timePickerDialog').classList.remove('active');}else this.showToast('Choose a valid time.');});
             }
             document.querySelectorAll('.task-filter-pill:not([data-bound])').forEach(button=>{
                 button.dataset.bound = 'true';
@@ -477,7 +477,7 @@
             const form=byId('newTaskForm');if(!form||form.dataset.bound)return;form.noValidate=true;form.dataset.bound='true';
             form.addEventListener('submit',event=>{event.preventDefault();this.submitForm(form,()=>{
                 const category=document.querySelector('.cat-picker-item.active')?.dataset.category||'personal';
-                const input={title:byId('modalTaskTitle').value,description:byId('modalTaskDesc')?.value||'',category,date:byId('modalTaskDate').value,time:byId('modalTaskTime').value};
+                const input={title:byId('modalTaskTitle').value,description:byId('modalTaskDesc')?.value||'',category,date:byId('modalTaskDate').value,time:this.getTaskModalTime()};
                 if(this._editingTask)input.id=this._editingTask;
                 store.saveTask(input);
                 const aiDish = this.aiDetectCookingDish(input.title, input.description);
@@ -504,7 +504,7 @@
                     const parsed = this.aiParseNaturalTask(text);
                     if (parsed.title) byId('modalTaskTitle').value = parsed.title;
                     if (parsed.date) byId('modalTaskDate').value = parsed.date;
-                    if (parsed.time) byId('modalTaskTime').value = parsed.time;
+                    if (parsed.time) this.setTaskModalTime(parsed.time);
                     if (parsed.category) {
                         document.querySelectorAll('.cat-picker-item').forEach(item => {
                             item.classList.toggle('active', item.dataset.category === parsed.category);
@@ -571,7 +571,7 @@
             if (byId('aiSmartTaskPrompt')) byId('aiSmartTaskPrompt').value = '';
             byId('modalTaskTitle').value=task?.title||'';if(byId('modalTaskDesc'))byId('modalTaskDesc').value=task?.description||'';
             byId('modalTaskDate').value=task?.date||date||(this.pageName()==='calendar.html'?this.selectedCalendarDate:dayKey());
-            byId('modalTaskTime').value=task?.time||nowTime();
+            this.setTaskModalTime(task?.time||nowTime());
             document.querySelectorAll('.cat-picker-item').forEach(item=>item.classList.toggle('active',item.dataset.category===selected));
             const error=byId('newTaskForm').querySelector('.form-error');if(error)error.hidden=true;
             byId('newTaskForm').querySelectorAll('.field-error').forEach(node=>node.remove());
@@ -865,25 +865,74 @@
 
             let date = '';
             const today = new Date();
-            if (/\btomorrow\b/i.test(raw)) {
-                const tom = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-                date = dayKey(tom);
+            const months = { jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4, may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9, sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12 };
+            const formatCandidate = (y, m, d) => {
+                const iso = `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                return validation.isValidDate(iso) ? iso : '';
+            };
+            const resolveMonthDay = (monthNum, dayNum, yearNum) => {
+                if (yearNum) return formatCandidate(yearNum, monthNum, dayNum);
+                const y = today.getFullYear();
+                const currentYearCandidate = formatCandidate(y, monthNum, dayNum);
+                if (currentYearCandidate && currentYearCandidate >= dayKey(today)) return currentYearCandidate;
+                return formatCandidate(y + 1, monthNum, dayNum) || currentYearCandidate;
+            };
+
+            const monthPattern = 'jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
+            const mdyRegex = new RegExp(`\\b(?:on\\s+)?(${monthPattern})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:\\s*,?\\s*(\\d{4}))?\\b`, 'i');
+            const dmyRegex = new RegExp(`\\b(?:on\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\.?(?:\\s*,?\\s*(\\d{4}))?\\b`, 'i');
+            const isoMatch = raw.match(/\b(?:on\s+)?(\d{4})-(\d{1,2})-(\d{1,2})\b/i);
+            const slashMatch = raw.match(/\b(?:on\s+)?(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?\b/i);
+            const mdyMatch = raw.match(mdyRegex);
+            const dmyMatch = raw.match(dmyRegex);
+
+            if (mdyMatch) {
+                const candidate = resolveMonthDay(months[mdyMatch[1].toLowerCase()], Number(mdyMatch[2]), mdyMatch[3] ? Number(mdyMatch[3]) : null);
+                if (candidate) { date = candidate; raw = raw.replace(mdyMatch[0], ' '); }
+            } else if (dmyMatch) {
+                const candidate = resolveMonthDay(months[dmyMatch[2].toLowerCase()], Number(dmyMatch[1]), dmyMatch[3] ? Number(dmyMatch[3]) : null);
+                if (candidate) { date = candidate; raw = raw.replace(dmyMatch[0], ' '); }
+            } else if (isoMatch) {
+                const candidate = formatCandidate(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3]));
+                if (candidate) { date = candidate; raw = raw.replace(isoMatch[0], ' '); }
+            } else if (slashMatch) {
+                let first = Number(slashMatch[1]), second = Number(slashMatch[2]);
+                if (first > 12 && second <= 12) [first, second] = [second, first];
+                const candidate = resolveMonthDay(first, second, slashMatch[3] ? Number(slashMatch[3]) : null);
+                if (candidate) { date = candidate; raw = raw.replace(slashMatch[0], ' '); }
+            }
+
+            if (!date && /\bday after tomorrow\b/i.test(raw)) {
+                date = dayKey(new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000));
+                raw = raw.replace(/\b(?:the\s+)?day after tomorrow\b/i, ' ');
+            } else if (!date && /\btomorrow\b/i.test(raw)) {
+                date = dayKey(new Date(today.getTime() + 24 * 60 * 60 * 1000));
                 raw = raw.replace(/\btomorrow\b/i, ' ');
-            } else if (/\btoday\b/i.test(raw)) {
+            } else if (!date && /\btoday\b/i.test(raw)) {
                 date = dayKey(today);
                 raw = raw.replace(/\btoday\b/i, ' ');
-            } else {
-                const dayMatch = raw.match(/\b(?:next|this|on)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
-                if (dayMatch) {
-                    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                    const targetDay = days.indexOf(dayMatch[1].toLowerCase());
-                    if (targetDay !== -1) {
-                        const currentDay = today.getDay();
-                        let diff = (targetDay - currentDay + 7) % 7;
-                        if (diff === 0 || /\bnext\s+/i.test(dayMatch[0])) diff = diff === 0 ? 7 : diff + 7;
-                        const targetDate = new Date(today.getTime() + diff * 24 * 60 * 60 * 1000);
-                        date = dayKey(targetDate);
-                        raw = raw.replace(dayMatch[0], ' ');
+            } else if (!date) {
+                const relMatch = raw.match(/\bin\s+(\d{1,3})\s+(days?|weeks?)\b/i);
+                if (relMatch) {
+                    const mult = /^week/i.test(relMatch[2]) ? 7 : 1;
+                    date = dayKey(new Date(today.getTime() + Number(relMatch[1]) * mult * 24 * 60 * 60 * 1000));
+                    raw = raw.replace(relMatch[0], ' ');
+                } else if (/\bnext\s+week\b/i.test(raw)) {
+                    date = dayKey(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000));
+                    raw = raw.replace(/\bnext\s+week\b/i, ' ');
+                } else {
+                    const dayMatch = raw.match(/\b(?:next|this|on)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
+                    if (dayMatch) {
+                        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                        const targetDay = days.indexOf(dayMatch[1].toLowerCase());
+                        if (targetDay !== -1) {
+                            const currentDay = today.getDay();
+                            let diff = (targetDay - currentDay + 7) % 7;
+                            if (diff === 0 || /\bnext\s+/i.test(dayMatch[0])) diff = diff === 0 ? 7 : diff + 7;
+                            const targetDate = new Date(today.getTime() + diff * 24 * 60 * 60 * 1000);
+                            date = dayKey(targetDate);
+                            raw = raw.replace(dayMatch[0], ' ');
+                        }
                     }
                 }
             }
@@ -892,6 +941,7 @@
             let title = raw
                 .replace(/\b(?:next|this|on|at|for|by|every)\b/gi, ' ')
                 .replace(/\s+/g, ' ')
+                .replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '')
                 .trim();
             if (title.length < 2) title = prompt.trim();
             title = title.charAt(0).toUpperCase() + title.slice(1);
@@ -1818,7 +1868,7 @@
                         }
                     } else {
                         const isTaskVerb = /^(?:please\s+)?(?:remind\s+me|remember\s+to|don'?t\s+forget|add\s+(?:a\s+)?(?:task|reminder|event)|schedule|create|cook|bake|prepare|make)\b/i.test(text);
-                        const hasTimeOrDateCue = /\b(?:at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)|today|tomorrow|tonight|morning|afternoon|evening|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(text);
+                        const hasTimeOrDateCue = /\b(?:at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)|today|tomorrow|next\s+week|in\s+\d+\s+(?:days?|weeks?)|tonight|morning|afternoon|evening|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{4}-\d{1,2}-\d{1,2}|\d{1,2}\/\d{1,2}(?:\/\d{4})?|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}|\d{1,2}(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?))\b/i.test(text);
                         if (isTaskVerb || hasTimeOrDateCue) {
                             const parsed = this.aiParseNaturalTask(text);
                             const dish = this.aiDetectCookingDish(parsed.title, text);
@@ -2242,7 +2292,32 @@
             this._alarm=setTimeout(()=>{this._alarm=null;this.checkReminders();this.scheduleReminders();},Math.min(2147483647,Math.max(1,new Date(next.date+'T'+next.time+':00').getTime()-Date.now())));
         },
         prettyDay(value) { return new Date(value+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); },
-        prettyTime(value) { const [h,m]=value.split(':').map(Number);return (h%12||12)+':'+String(m).padStart(2,'0')+' '+(h>=12?'PM':'AM'); }
+        prettyTime(value) { const [h,m]=value.split(':').map(Number);return (h%12||12)+':'+String(m).padStart(2,'0')+' '+(h>=12?'PM':'AM'); },
+        to24HourTime(value = '') {
+            const text = String(value || '').trim();
+            if (/^([01]\d|2[0-3]):[0-5]\d$/.test(text)) return text;
+            const match = text.match(/^(\d{1,2}):([0-5]\d)\s*(AM|PM)$/i);
+            if (!match) return '';
+            let hour = Number(match[1]);
+            if (hour < 1 || hour > 12) return '';
+            const period = match[3].toUpperCase();
+            if (period === 'AM' && hour === 12) hour = 0;
+            else if (period === 'PM' && hour < 12) hour += 12;
+            return String(hour).padStart(2, '0') + ':' + match[2];
+        },
+        setTaskModalTime(value) {
+            const field = byId('modalTaskTime');
+            if (!field) return;
+            const normalized = this.to24HourTime(value);
+            if (!normalized) { field.value = ''; delete field.dataset.time24; return; }
+            field.dataset.time24 = normalized;
+            field.value = this.prettyTime(normalized);
+        },
+        getTaskModalTime() {
+            const field = byId('modalTaskTime');
+            if (!field) return '';
+            return this.to24HourTime(field.value) || this.to24HourTime(field.dataset.time24) || '';
+        }
     };
     root.ParenTechApp=app;
     app.applyTheme();
